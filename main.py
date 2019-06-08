@@ -6,9 +6,11 @@ import subprocess
 
 class Config():
 
-    def __init__(self, a_strName ):
+    def __init__( self ):
         self.url = ''
-        with open( a_strName, 'r' ) as stream:
+
+    def open( self, a_strConfigPath ):
+        with open( a_strConfigPath, 'r' ) as stream:
             try:
                 yml = yaml.safe_load( stream )
                 self.url   = yml['repos']['url']
@@ -21,6 +23,7 @@ class Config():
 
             except yaml.YAMLError as e:
                 print( 'Error in config file' )
+
 
     def archiveCount( self ):
         return self.archiveCount
@@ -100,37 +103,41 @@ class Config():
             print( "  exclude-files :", self.getArchive( item, self.exclude_files() ))
             print( "    prune prefix:", self.getPrune( item, self.pruneUsePrefix() ))
             print( "     keep       :", self.getPrune( item, self.keep() ))
-            print( '  '
-                   '-----------------------------------------------------' )
+            print( '  -----------------------------------------------------' )
+
+class Borgrunner():
+    def __init__( self, a_config ):
+        #self.config = Config()
+        self.config = a_config
+
+    def borgcalls( self ):
+        self.config.print()
 
 
+    def sysCall( a_cmd, a_params ):
+        aCall = []
+        aCall.append( a_cmd )
+        for item in a_params:
+            aCall.append( item )
 
-def sysCall( a_cmd, a_params ):
-    aCall = []
-    aCall.append( a_cmd )
-    for item in a_params:
-        aCall.append( item )
-
-    res = subprocess.run( aCall, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
-    if res.returncode == 0:
-        print( 'ok', res.stdout )
-    else:
-        print( '!ok', res.stderr )
-    print( 'done' )
+        res = subprocess.run( aCall, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
+        if res.returncode == 0:
+            print( 'ok', res.stdout )
+        else:
+            print( '!ok', res.stderr )
+        print( 'done' )
 
 
 def main( a_argv=None ):
     if a_argv is None:
         a_argv = sys.argv
 
-    #config = Config( "biff.yaml" )
-    config = Config( "test.yaml" )
-    config.print()
+    config = Config()
+    config.open( "test.yaml" )
+    #config.print()
 
-    aParam = []
-    aParam.append( '-l' )
-    aParam.append( '-tr' )
-    #sysCall( 'ls', aParam )
+    borg = Borgrunner( config )
+    borg.borgcalls()
 
 
 
