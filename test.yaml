@@ -1,0 +1,37 @@
+---
+repos:
+    url: "repo"
+    flags: [ -s, --list, --filter, AME ]
+    
+    archive:
+      - prefixName:  "test-report-dir1-dir2"
+        postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
+        flags: [ "--one-file-system" ]
+        dryrun: true
+        includes: [ 'test-docs/dir1', 'test-docs/dir2' ]
+        excludes: [ "test-docs/dir1/f1", "test-docs/dir2/f2" ]
+        exclude-files: [ "test-docs/excludes" ]
+        prune:
+            usePrefix: true
+            dryrun: true
+            flags: [ "-P", "-stats", "-list", "--save-space" ]
+            keep: { "keep-daily"  : 14,
+                    "keep-weekly" : 12,
+                    "keep-monthly": 12
+                  }
+      - prefixName:  "test-report-dir3"
+        postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
+        flags: [ "--one-file-system" ]
+        dryrun: true
+        includes: [ 'test-docs/dir3' ]
+        excludes: [ "test-docs/dir3/f2" ]
+        exclude-files: [ "test-docs/excludes" ]
+        prune:
+            usePrefix: true
+            dryrun: true
+            flags: [ "-P", "-stats", "-list", "--save-space" ]
+            keep: { "keep-daily"  : 7,
+                    "keep-weekly" : 24,
+                    "keep-monthly": 5
+                  }
+...
