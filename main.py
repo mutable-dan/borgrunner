@@ -16,8 +16,7 @@ class Config():
                 self.url   = yml['repos']['url']
                 self.flags = yml['repos']['flags']
 
-                self.archiveCount = len( yml[ 'repos' ] )
-
+                #len( yml['repos'] )
                 self.archive = yml[ 'repos' ][ 'archive' ]
                 self.archiveIndex = 0
 
@@ -26,7 +25,7 @@ class Config():
 
 
     def archiveCount( self ):
-        return self.archiveCount
+        return len( self.archive )
 
     def firstArchive( self ):
         self.archiveIndex = 0
@@ -35,9 +34,15 @@ class Config():
     def nextArchive( self ):
         if self.archiveIndex < self.archiveCount():
             self.archiveIndex += 1
-            return self.archive[ self.archiveIndex ]
+            if self.archiveIndex >= self.archiveCount():
+                return None
+            else:
+                return self.archive[ self.archiveIndex ]
 
-    def getArchive( self, archive, name ):
+    def getArchive( self ):
+        return self.archive[ self.archiveIndex ]
+
+    def getArchiveValue( self, archive, name ):
         return archive[ name ]
 
     def getPrune( self, archive, name ):
@@ -99,33 +104,51 @@ class Config():
         print()
 
         for item in self.archive:
-            print( "  prefixName    :", self.getArchive( item, self.prefixName()    ) )
-            print( "  postfixName   :", self.getArchive( item, self.postfixName()   ) )
-            print( "  flags         :", self.getArchive( item, self.archflags()     ) )
-            print( "  dry-run       :", self.getArchive( item, self.dryrun()        ) )
-            print( "  includes      :", self.getArchive( item, self.includes()      ) )
-            print( "  excludes      :", self.getArchive( item, self.excludes()      ) )
-            print( "  exclude-files :", self.getArchive( item, self.exclude_files() ) )
-            print( "    prune prefix:", self.getPrune( item, self.pruneUsePrefix()  ) )
-            print( "     keep       :", self.getPrune( item, self.keep()            ) )
+            print( "  prefixName    :", self.getArchiveValue( item, self.prefixName()    ) )
+            print( "  postfixName   :", self.getArchiveValue( item, self.postfixName()   ) )
+            print( "  flags         :", self.getArchiveValue( item, self.archflags()     ) )
+            print( "  dry-run       :", self.getArchiveValue( item, self.dryrun()        ) )
+            print( "  includes      :", self.getArchiveValue( item, self.includes()      ) )
+            print( "  excludes      :", self.getArchiveValue( item, self.excludes()      ) )
+            print( "  exclude-files :", self.getArchiveValue( item, self.exclude_files() ) )
+            print( "    prune prefix:", self.getPrune( item, self.pruneUsePrefix()       ) )
+            print( "     keep       :", self.getPrune( item, self.keep()                 ) )
             print( '  -----------------------------------------------------' )
+
+
 
 class Borgrunner():
 
     def __init__( self, a_config ):
         self.config = a_config
-        self.create = 'create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {exclude-from}'
+        self.create = 'borg create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
 
-        self.flags = ''
+        self.flags = ' '.join( a_config.flags )
         self.url = a_config.url
+        self.prefixName  = None
+        self.postfixName = None
+        self.includes    = None
+        self.excludes    = None
+        self.excludeFile = None
 
-
-        self.prefixName = a_config.getArchive( a_config.firstArchive(), a_config.prefixName() )
-        self.postfixName = a_config.getArchive( a_config.firstArchive(), a_config.postfixName() )
         pass
 
     def show( self ):
-        pass
+        archive = self.config.firstArchive()
+
+        while archive != None:
+            self.prefixName  = self.config.getArchiveValue(  self.config.getArchive(),    self.config.prefixName() )
+            self.postfixName = self.config.getArchiveValue(  self.config.getArchive(),    self.config.postfixName() )
+            self.includes    = ' '.                    join( self.config.getArchiveValue( self.config.getArchive(), self.config.includes() ) )
+            self.excludes    = '-e ' + ' -e '.         join( self.config.getArchiveValue( self.config.getArchive(), self.config.excludes() ) )
+            self.excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( self.config.getArchive(), self.config.exclude_files() ) )
+            strCmd = self.create.format( flags=self.flags, url = self.url, prefixName = self.prefixName, postfixName = self.postfixName, includes = self.includes, excludes = self.excludes, excludefrom = self.excludeFile )
+
+            print( "{}".format( strCmd ) )
+            print()
+            archive = self.config.nextArchive()
+
+
 
 
 
