@@ -28,9 +28,14 @@ class Config():
     def archiveCount( self ):
         return self.archiveCount
 
+    def firstArchive( self ):
+        self.archiveIndex = 0
+        return self.archive[ self.archiveIndex ]
+
     def nextArchive( self ):
         if self.archiveIndex < self.archiveCount():
             self.archiveIndex += 1
+            return self.archive[ self.archiveIndex ]
 
     def getArchive( self, archive, name ):
         return archive[ name ]
@@ -106,12 +111,23 @@ class Config():
             print( '  -----------------------------------------------------' )
 
 class Borgrunner():
-    def __init__( self, a_config ):
-        #self.config = Config()
-        self.config = a_config
 
-    def borgcalls( self ):
-        self.config.print()
+    def __init__( self, a_config ):
+        self.config = a_config
+        #self.create = 'create -s --list --filter AME  borg@192.168.0.104:borgback::mrbiff-documents-{now:%Y-%m-%dT%H:%M:%S} $documents --exclude-from $excludedir --one-file-system'
+        self.create = 'create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {exclude-from}'
+
+        self.flags = ''
+        self.url = a_config.url
+
+
+        self.prefixName = a_config.getArchive( a_config.firstArchive(), a_config.prefixName() )
+        self.postfixName = a_config.getArchive( a_config.firstArchive(), a_config.postfixName() )
+        pass
+
+    def show( self ):
+        pass
+
 
 
     def sysCall( a_cmd, a_params ):
@@ -134,10 +150,10 @@ def main( a_argv=None ):
 
     config = Config()
     config.open( "test.yaml" )
-    #config.print()
+    config.print()
 
     borg = Borgrunner( config )
-    borg.borgcalls()
+    borg.show()
 
 
 
