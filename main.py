@@ -137,13 +137,13 @@ class Borgrunner():
         archive = self.config.firstArchive()
 
         while archive != None:
-            self.prefixName  = self.config.getArchiveValue(  self.config.getArchive(),    self.config.prefixName() )
-            self.postfixName = self.config.getArchiveValue(  self.config.getArchive(),    self.config.postfixName() )
-            self.includes    = ' '.                    join( self.config.getArchiveValue( self.config.getArchive(), self.config.includes() ) )
-            self.excludes    = '-e ' + ' -e '.         join( self.config.getArchiveValue( self.config.getArchive(), self.config.excludes() ) )
-            self.excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( self.config.getArchive(), self.config.exclude_files() ) )
-            strCmd = self.create.format( flags=self.flags, url = self.url, prefixName = self.prefixName, postfixName = self.postfixName, includes = self.includes, excludes = self.excludes, excludefrom = self.excludeFile )
+            self.prefixName  = self.config.getArchiveValue(  archive,    self.config.prefixName() )
+            self.postfixName = self.config.getArchiveValue(  archive,    self.config.postfixName() )
+            self.includes    = ' '.                    join( self.config.getArchiveValue( archive, self.config.includes() ) )
+            self.excludes    = '-e ' + ' -e '.         join( self.config.getArchiveValue( archive, self.config.excludes() ) )
+            self.excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( archive, self.config.exclude_files() ) )
 
+            strCmd = self.create.format( flags=self.flags, url = self.url, prefixName = self.prefixName, postfixName = self.postfixName, includes = self.includes, excludes = self.excludes, excludefrom = self.excludeFile )
             print( "{}".format( strCmd ) )
             print()
             archive = self.config.nextArchive()
