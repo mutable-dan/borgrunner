@@ -1,6 +1,6 @@
 ---
 repos:
-    url: "borgtest"
+    url: "repo"
     flags: [ -s, --list, --filter, AME ]
     
     archive:
@@ -9,8 +9,8 @@ repos:
         flags: [ "--one-file-system" ]
         dryrun: true
         includes: [ 'test-docs/dir1', 'test-docs/dir2' ]
-        excludes: [ "/home/gdan/mnt/gdan/homedir/bin", "/home/gdan/mnt/gdan/homedir/thundebird" ]
-        exclude-files: [ "/home/gdan/Documents/backup/dev-exclude" ]
+        excludes: [ "test-docs/dir1/f1", "test-docs/dir2/f2" ]
+        exclude-files: [ "test-docs/excludes" ]
         prune:
             usePrefix: true
             dryrun: true
@@ -24,8 +24,8 @@ repos:
         flags: [ "--one-file-system" ]
         dryrun: true
         includes: [ 'test-docs/dir3' ]
-        excludes: [ "/home/gdan/mnt/gdan/homedir/bin", "/home/gdan/mnt/gdan/homedir/thundebird" ]
-        exclude-files: [ "/home/gdan/Documents/backup/dev-exclude" ]
+        excludes: [ "test-docs/dir3/f2" ]
+        exclude-files: [ "test-docs/excludes" ]
         prune:
             usePrefix: true
             dryrun: true
