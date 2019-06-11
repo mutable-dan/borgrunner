@@ -121,42 +121,59 @@ class Borgrunner():
 
     def __init__( self, a_config ):
         self.config = a_config
-        self.create = 'borg create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
+        self.create = 'create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
 
-        self.flags = ' '.join( a_config.flags )
-        self.url = a_config.url
+        self.flags       = a_config.flags
+        self.url         = a_config.url
         self.prefixName  = None
         self.postfixName = None
         self.includes    = None
         self.excludes    = None
         self.excludeFile = None
+        self.dryrun      = False
 
-        pass
+    def createCommand( self, archive ):
+        self.prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
+        self.postfixName = self.config.getArchiveValue( archive, self.config.postfixName() )
+        self.includes    = ' '.join( self.config.getArchiveValue( archive, self.config.includes() ) )
+        self.excludes    = '-e ' + ' -e '.join( self.config.getArchiveValue( archive, self.config.excludes() ) )
+        self.excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( archive, self.config.exclude_files() ) )
+        self.dryrun      = self.config.getArchiveValue( archive, self.config.dryrun() )
+
+        if self.dryrun:
+            if '-s' in self.flags:
+                self.flags.remove( '-s' )
+            if '--stats' in self.flags:
+                self.flags.remove( '--stats' )
+            self.flags += [ '--dry-run' ]
+
+        return ( 'borg',
+                 self.create.format( flags=' '.join(self.flags), url=self.url, prefixName=self.prefixName,
+                                     postfixName=self.postfixName, includes=self.includes, excludes=self.excludes,
+                                     excludefrom=self.excludeFile )
+                 )
 
     def show( self ):
         archive = self.config.firstArchive()
 
-        while archive != None:
-            self.prefixName  = self.config.getArchiveValue(  archive,    self.config.prefixName() )
-            self.postfixName = self.config.getArchiveValue(  archive,    self.config.postfixName() )
-            self.includes    = ' '.                    join( self.config.getArchiveValue( archive, self.config.includes() ) )
-            self.excludes    = '-e ' + ' -e '.         join( self.config.getArchiveValue( archive, self.config.excludes() ) )
-            self.excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( archive, self.config.exclude_files() ) )
-
-            strCmd = self.create.format( flags=self.flags, url = self.url, prefixName = self.prefixName, postfixName = self.postfixName, includes = self.includes, excludes = self.excludes, excludefrom = self.excludeFile )
-            print( "{}".format( strCmd ) )
+        while archive is not None:
+            print( "{}".format( self.createCommand( archive )[2] ) )
             print()
             archive = self.config.nextArchive()
 
+    def run( self ):
+        archive = self.config.firstArchive()
 
+        while archive is not None:
+            strCmd, strParam = self.createCommand( archive )
+            print( 'exec:{} {}'.format( strCmd, strParam ))
+            self.sysCall( strCmd, strParam )
+            archive = self.config.nextArchive()
 
-
-
-    def sysCall( a_cmd, a_params ):
+    def sysCall( self, a_cmd: str, a_params: str ):
         aCall = []
         aCall.append( a_cmd )
-        for item in a_params:
-            aCall.append( item )
+        aCall += a_params.split()
 
         res = subprocess.run( aCall, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
         if res.returncode == 0:
@@ -166,16 +183,32 @@ class Borgrunner():
         print( 'done' )
 
 
+
+def sysCall( a_cmd: str, a_params: str ):
+    lstParam = a_params.split()
+    aCall = [ str(a_cmd) ] + lstParam
+
+
+    res = subprocess.run( aCall, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
+    if res.returncode == 0:
+        print( 'ok', res.stdout )
+    else:
+        print( '!ok', res.stderr )
+    print( 'done' )
+
+
 def main( a_argv=None ):
     if a_argv is None:
         a_argv = sys.argv
+
+    sysCall( 'find', '. -name main.py' )
 
     config = Config()
     config.open( "test.yaml" )
     config.print()
 
     borg = Borgrunner( config )
-    borg.show()
+    borg.run()
 
 
 

@@ -7,7 +7,7 @@ repos:
       - prefixName:  "test-report-dir1-dir2"
         postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
         flags: [ "--one-file-system" ]
-        dryrun: true
+        dryrun: false
         includes: [ 'test-docs/dir1', 'test-docs/dir2' ]
         excludes: [ "test-docs/dir1/f1", "test-docs/dir2/f2" ]
         exclude-files: [ "test-docs/excludes" ]
