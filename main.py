@@ -45,7 +45,10 @@ class Config():
     def getArchiveValue( self, archive, name ):
         return archive[ name ]
 
-    def getPrune( self, archive, name ):
+    def getPrune( self, archive ):
+        return archive[ 'prune' ]
+
+    def getPruneValue( self, archive, name ):
         return archive[ 'prune' ][ name ]
 
     @property
@@ -122,6 +125,8 @@ class Borgrunner():
     def __init__( self, a_config ):
         self.config = a_config
         self.create = 'create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
+        self.prune  = 'prune  -P {prefixName] {flags} {keep}  {url}'
+
 
         self.flags       = a_config.flags
         self.url         = a_config.url
@@ -152,6 +157,11 @@ class Borgrunner():
                                      postfixName=self.postfixName, includes=self.includes, excludes=self.excludes,
                                      excludefrom=self.excludeFile )
                  )
+
+    def pruneCommand( self, archive ):
+        bUsePrefix = self.config.getPrunceValue( archive, self.config.pruneUsePrefix )
+        dryrun     = self.config.getPrunceValue( archive, self.config.dryrun() )
+
 
     def show( self ):
         archive = self.config.firstArchive()

@@ -17,7 +17,8 @@ repos:
             flags: [ "-P", "-stats", "-list", "--save-space" ]
             keep: { "keep-daily"  : 14,
                     "keep-weekly" : 12,
-                    "keep-monthly": 12
+                    "keep-monthly": 12,
+                    "keep-yearly" : 2
                   }
       - prefixName:  "test-report-dir3"
         postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
@@ -32,6 +33,7 @@ repos:
             flags: [ "-P", "-stats", "-list", "--save-space" ]
             keep: { "keep-daily"  : 7,
                     "keep-weekly" : 24,
-                    "keep-monthly": 5
+                    "keep-monthly": 5,
+                    "keep-yearly" : 3
                   }
 ...
