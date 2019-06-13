@@ -4,6 +4,16 @@ import sys
 import yaml
 import subprocess
 
+class BackupType:
+    BACKUP    = 1
+    PRUNE     = 2
+    CHECK     = 3
+    CHECKFULL = 4
+    MOUNT     = 5
+    BREAKLOCK = 6
+
+
+
 class Config():
 
     def __init__( self ):
@@ -114,8 +124,8 @@ class Config():
             print( "  includes      :", self.getArchiveValue( item, self.includes()      ) )
             print( "  excludes      :", self.getArchiveValue( item, self.excludes()      ) )
             print( "  exclude-files :", self.getArchiveValue( item, self.exclude_files() ) )
-            print( "    prune prefix:", self.getPrune( item, self.pruneUsePrefix()       ) )
-            print( "     keep       :", self.getPrune( item, self.keep()                 ) )
+            print( "    prune prefix:", self.getPruneValue  ( item, self.pruneUsePrefix()) )
+            print( "     keep       :", self.getPruneValue  ( item, self.keep()          ) )
             print( '  -----------------------------------------------------' )
 
 
@@ -125,7 +135,7 @@ class Borgrunner():
     def __init__( self, a_config ):
         self.config = a_config
         self.create = 'create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
-        self.prune  = 'prune  -P {prefixName] {flags} {keep}  {url}'
+        self.prune  = 'prune {prefixFlag} {prefixName} {flags} {keep} {url}'
 
 
         self.flags       = a_config.flags
@@ -138,29 +148,60 @@ class Borgrunner():
         self.dryrun      = False
 
     def createCommand( self, archive ):
-        self.prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
-        self.postfixName = self.config.getArchiveValue( archive, self.config.postfixName() )
-        self.includes    = ' '.join( self.config.getArchiveValue( archive, self.config.includes() ) )
-        self.excludes    = '-e ' + ' -e '.join( self.config.getArchiveValue( archive, self.config.excludes() ) )
-        self.excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( archive, self.config.exclude_files() ) )
-        self.dryrun      = self.config.getArchiveValue( archive, self.config.dryrun() )
+        prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
+        postfixName = self.config.getArchiveValue( archive, self.config.postfixName() )
+        includes    = ' '.join( self.config.getArchiveValue( archive, self.config.includes() ) )
+        excludes    = '-e ' + ' -e '.join( self.config.getArchiveValue( archive, self.config.excludes() ) )
+        excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( archive, self.config.exclude_files() ) )
+        dryrun      = self.config.getArchiveValue( archive, self.config.dryrun() )
 
-        if self.dryrun:
-            if '-s' in self.flags:
-                self.flags.remove( '-s' )
-            if '--stats' in self.flags:
+        flags = self.flags
+
+        if dryrun:
+            if '-s' in flags:
+                flags.remove( '-s' )
+            if '--stats' in flags:
                 self.flags.remove( '--stats' )
-            self.flags += [ '--dry-run' ]
+            flags += [ '--dry-run' ]
 
         return ( 'borg',
-                 self.create.format( flags=' '.join(self.flags), url=self.url, prefixName=self.prefixName,
-                                     postfixName=self.postfixName, includes=self.includes, excludes=self.excludes,
-                                     excludefrom=self.excludeFile )
+                 self.create.format( flags      =' '.join(flags),
+                                     url        =self.url,
+                                     prefixName =prefixName,
+                                     postfixName=postfixName,
+                                     includes   =includes,
+                                     excludes   =excludes,
+                                     excludefrom=excludeFile )
                  )
 
     def pruneCommand( self, archive ):
-        bUsePrefix = self.config.getPrunceValue( archive, self.config.pruneUsePrefix )
-        dryrun     = self.config.getPrunceValue( archive, self.config.dryrun() )
+        bUsePrefix  = self.config.getPruneValue( archive, self.config.pruneUsePrefix() )
+        dryrun      = self.config.getPruneValue( archive, self.config.dryrun() )
+
+        prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
+        keep        = self.config.getPruneValue( archive, self.config.keep() )
+
+        flags = self.config.getPruneValue( archive, self.config.archflags() )
+
+        if dryrun:
+            if '-s' in flags:
+                flags.remove( '-s' )
+            if '--stats' in flags:
+                flags.remove( '--stats' )
+            flags += [ '--dry-run' ]
+
+        prefixFlag = '-P'
+        if bUsePrefix == False:
+            prefixFlag = ''
+            prefixName = ''
+
+        return ( 'borg',
+                 self.prune.format( prefixFlag= prefixFlag,
+                                    prefixName= prefixName,
+                                    flags     = ' '.join( flags ),
+                                    keep      = ' '.join( keep ),
+                                    url       = self.url )
+                 )
 
 
     def show( self ):
@@ -171,14 +212,22 @@ class Borgrunner():
             print()
             archive = self.config.nextArchive()
 
-    def run( self ):
+    def run( self, a_Command: BackupType ):
         archive = self.config.firstArchive()
 
         while archive is not None:
-            strCmd, strParam = self.createCommand( archive )
+            if a_Command == BackupType.BACKUP:
+                strCmd, strParam = self.createCommand( archive )
+            elif a_Command == BackupType.PRUNE:
+                strCmd, strParam = self.pruneCommand( archive )
+            else:
+                print( 'unknow command' )
+                return
+
             print( 'exec:{} {}'.format( strCmd, strParam ))
             self.sysCall( strCmd, strParam )
             archive = self.config.nextArchive()
+
 
     def sysCall( self, a_cmd: str, a_params: str ):
         aCall = []
@@ -218,7 +267,9 @@ def main( a_argv=None ):
     config.print()
 
     borg = Borgrunner( config )
-    borg.run()
+    borg.run( BackupType.BACKUP )
+    print( ' prune -------' )
+    borg.run( BackupType.PRUNE )
 
 
 
