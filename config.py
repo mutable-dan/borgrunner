@@ -1,5 +1,58 @@
 import yaml
 
+'''
+    read a ymal file in the form of:
+    ---
+    repos:
+        url: "repo"
+        flags: [ -s, --list, --filter, AME ]
+        dry-run: false
+        
+        archive:
+          - prefixName:  "test-report-dir1-dir2"
+            postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
+            flags: [ "--one-file-system" ]
+            includes: [ 'test-docs/dir1', 'test-docs/dir2' ]
+            excludes: [ "test-docs/dir1/f1", "test-docs/dir2/f2" ]
+            exclude-files: [ "test-docs/excludes" ]
+            prune:
+                usePrefix: true
+                dryrun: false
+                flags: [ "--stats", "--list", "--save-space" ]
+                keep: { "keep-daily"  : 14,
+                        "keep-weekly" : 12,
+                        "keep-monthly": 12,
+                        "keep-yearly" : 2
+                      }
+    
+          - prefixName:  "test-report-dir3"
+            postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
+            flags: [ "--one-file-system" ]
+            includes: [ 'test-docs/dir3' ]
+            excludes: [ "test-docs/dir3/f2" ]
+            exclude-files: [ "test-docs/excludes" ]
+            prune:
+                usePrefix: true
+                flags: [ "--stats", "--list", "--save-space" ]
+                keep: { "keep-daily"  : 7,
+                        "keep-weekly" : 24,
+                        "keep-monthly": 5,
+                        "keep-yearly" : 3
+                      }
+    ...
+    a repo points to a uri of a borg repo
+    each repo devices archives that will be backed up
+    the archive defines it's name (prefixName) and a postfix name which is usually a timestamp
+        ex name-2019-06-16--13:59:00
+    each archive will define pruning commands
+    
+    todo:
+        error handing
+            no printing
+            error handing methods
+        allow empty prune
+         
+'''
 class Config():
 
     def __init__( self ):
@@ -11,8 +64,8 @@ class Config():
             try:
                 yml = yaml.safe_load( stream )
                 self.url   = yml['repos']['url']
+                self.dryrun= yml['repos']['dryrun']
                 self.flags = yml['repos']['flags']
-                self.dryrun= yml['repos']['dry-run']
 
                 self.archive = yml[ 'repos' ][ 'archive' ]
                 self.archiveIndex = 0
@@ -24,10 +77,16 @@ class Config():
     def archiveCount( self ):
         return len( self.archive )
 
+    '''
+    point to the first archive
+    '''
     def firstArchive( self ):
         self.archiveIndex = 0
         return self.archive[ self.archiveIndex ]
 
+    '''
+    point to the next archive
+    '''
     def nextArchive( self ):
         if self.archiveIndex < self.archiveCount():
             self.archiveIndex += 1
@@ -36,9 +95,15 @@ class Config():
             else:
                 return self.archive[ self.archiveIndex ]
 
+    '''
+    return current archive pointed to
+    '''
     def getArchive( self ):
         return self.archive[ self.archiveIndex ]
 
+    '''
+    get a value in the archive elemenet
+    '''
     def getArchiveValue( self, archive, name ):
         return archive[ name ]
 
@@ -84,10 +149,6 @@ class Config():
     def postfixName( self ):
         return 'postfixName'
 
-    '''
-    def dryrun( self ):
-        return 'dryrun'
-    '''
     def includes( self ):
         return 'includes'
 

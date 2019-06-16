@@ -2,7 +2,7 @@
 repos:
     url: "repo"
     flags: [ -s, --list, --filter, AME ]
-    dry-run: false
+    dryrun: false
     
     archive:
       - prefixName:  "test-report-dir1-dir2"
@@ -13,7 +13,6 @@ repos:
         exclude-files: [ "test-docs/excludes" ]
         prune:
             usePrefix: true
-            dryrun: false
             flags: [ "--stats", "--list", "--save-space" ]
             keep: { "keep-daily"  : 14,
                     "keep-weekly" : 12,

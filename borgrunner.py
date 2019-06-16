@@ -13,6 +13,7 @@ class BackupType:
     MOUNT     = 5
     BREAKLOCK = 6
     INFO      = 7
+    LIST      = 8
 
 
 class Borgrunner():
@@ -22,6 +23,7 @@ class Borgrunner():
         self.create = 'create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
         self.prune  = 'prune {prefixFlag} {prunePrefixName} {flags} {keep} {url}'
         self.info = 'info --sort-by name {url}'
+        self.list = 'list --sort-by name --format="{{time}} --> {{name}}{{LF}}" {url}'
 
 
 
@@ -34,12 +36,15 @@ class Borgrunner():
         self.excludeFile = None
 
 
-    def createCommand( self, archive ):
-        prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
-        postfixName = self.config.getArchiveValue( archive, self.config.postfixName() )
-        includes    = ' '.join( self.config.getArchiveValue( archive, self.config.includes() ) )
-        excludes    = '-e ' + ' -e '.join( self.config.getArchiveValue( archive, self.config.excludes() ) )
-        excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( archive, self.config.exclude_files() ) )
+    '''
+    borg command to amke a backup snapshot
+    '''
+    def createCommand( self, a_archive ):
+        prefixName  = self.config.getArchiveValue( a_archive, self.config.prefixName() )
+        postfixName = self.config.getArchiveValue( a_archive, self.config.postfixName() )
+        includes    = ' '.join( self.config.getArchiveValue( a_archive, self.config.includes() ) )
+        excludes    = '-e ' + ' -e '.join( self.config.getArchiveValue( a_archive, self.config.excludes() ) )
+        excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( a_archive, self.config.exclude_files() ) )
         dryrun      = self.config.dryrun
 
         flags = self.flags
@@ -61,19 +66,22 @@ class Borgrunner():
                                      excludefrom=excludeFile )
                  )
 
-    def pruneCommand( self, archive ):
-        bUsePrefix  = self.config.getPruneValue( archive, self.config.pruneUsePrefix() )
+    '''
+    borg command for pruning snapshots
+    '''
+    def pruneCommand( self, a_archive ):
+        bUsePrefix  = self.config.getPruneValue( a_archive, self.config.pruneUsePrefix() )
         dryrun      = self.config.dryrun
 
-        prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
-        keep        = self.config.getPruneValue( archive, self.config.keep() )
+        prefixName  = self.config.getArchiveValue( a_archive, self.config.prefixName() )
+        keep        = self.config.getPruneValue( a_archive, self.config.keep() )
 
         strKeep = ''
         for key in keep:
             strKeep += "--{}={} ".format( key, keep[ key ] )
 
 
-        flags = self.config.getPruneValue( archive, self.config.archflags() )
+        flags = self.config.getPruneValue( a_archive, self.config.archflags() )
 
         if dryrun:
             if '-s' in flags:
@@ -96,10 +104,21 @@ class Borgrunner():
                                     url       = self.url )
                  )
 
-    def infoCommand( self, archive ):
+    '''
+    borg in fo command
+    '''
+    def infoCommand( self ):
         return ( 'borg', self.info.format( url = self.url ) )
 
+    '''
+    broken borg list
+        parsing for sys call is broken
+    '''
+    def listCommand( self ):
+        return ( 'borg', self.list.format( url = self.url ) )
 
+
+    '''
     def show( self ):
         archive = self.config.firstArchive()
 
@@ -107,8 +126,12 @@ class Borgrunner():
             print( "{}".format( self.createCommand( archive )[2] ) )
             print()
             archive = self.config.nextArchive()
+    '''
 
-    def run( self, a_bVerbose, a_Command: BackupType ):
+    '''
+    run a borg command
+    '''
+    def run( self, a_bVerbose: bool, a_Command: BackupType, a_strPassword: str ):
         archive = self.config.firstArchive()
 
         while archive is not None:
@@ -117,25 +140,37 @@ class Borgrunner():
             elif a_Command == BackupType.PRUNE:
                 strCmd, strParam = self.pruneCommand( archive )
             elif a_Command == BackupType.INFO:
-                strCmd, strParam = self.infoCommand( archive )
+                strCmd, strParam = self.infoCommand( )
+            elif a_Command == BackupType.LIST:
+                strCmd, strParam = self.listCommand( )
             else:
                 print( 'unknown command' )
                 return
 
             if a_bVerbose == True:
                 print( 'exec:{} {}'.format( strCmd, strParam ) )
-            strReturn = self.sysCall( strCmd, strParam )
+
+            strReturn = self.sysCall( strCmd, strParam, a_strPassword )
             if a_bVerbose == True:
                 print( 'return info: {}'.format( strReturn ) )
             archive = self.config.nextArchive()
 
 
-    def sysCall( self, a_cmd: str, a_params: str ):
+    '''
+    do the system call
+    '''
+    def sysCall( self, a_cmd: str, a_params: str, a_strPassword: str ):
         aCall = []
         aCall.append( a_cmd )
         aCall += a_params.split()
 
-        res = subprocess.run( aCall, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
+        if a_strPassword is not None:
+            denv = { 'BORG_PASSPHRASE' : a_strPassword }
+            res = subprocess.run( aCall, shell=False, env=denv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+                                  universal_newlines=True )
+        else:
+            res = subprocess.run( aCall, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
+
         if res.returncode == 0:
             return 'completed: {}'.format( res.stdout )
         else:
@@ -169,9 +204,9 @@ def main( a_argv=None ):
     parser.add_argument( 'command_arg7', type=str, help='Backup command: ' + strAllcommands, nargs='?' )
     parser.add_argument( 'command_arg8', type=str, help='Backup command: ' + strAllcommands, nargs='?' )
 
-    parser.add_argument( '-P' '--pass', type=str, help='borg passphase' )
-    parser.add_argument( '-v', '--verbose', help='borg passphase', action='store_true' )
-    parser.add_argument( '--version',      help='borg passphase' )
+    parser.add_argument( '-P', '--password', type=str, help='borg passphase' )
+    parser.add_argument( '-v', '--verbose', help='verbose mode', action='store_true' )
+    parser.add_argument( '--version',       help='borg version' )
 
     pargs = parser.parse_args()
     if pargs.verbose == True:
@@ -185,22 +220,47 @@ def main( a_argv=None ):
 
         print()
 
+    lstCommand = []
+    lstCommand.append( pargs.command_arg0 )
+    if pargs.command_arg1 is not None:
+        lstCommand.append( pargs.command_arg1 )
+    if pargs.command_arg2 is not None:
+        lstCommand.append( pargs.command_arg2 )
+    if pargs.command_arg3 is not None:
+        lstCommand.append( pargs.command_arg3 )
+    if pargs.command_arg4 is not None:
+        lstCommand.append( pargs.command_arg4 )
+    if pargs.command_arg5 is not None:
+        lstCommand.append( pargs.command_arg5 )
+    if pargs.command_arg6 is not None:
+        lstCommand.append( pargs.command_arg6 )
+    if pargs.command_arg7 is not None:
+        lstCommand.append( pargs.command_arg7 )
+    if pargs.command_arg8 is not None:
+        lstCommand.append( pargs.command_arg8 )
+
+    strBorgPass = None
+    if pargs.password is not None:
+        strBorgPass = pargs.password
 
 
 
     conf = config.Config()
-    conf.open( "test.yaml" )
-    #config.print()
+    conf.open( pargs.yaml_arg )
+    if pargs.verbose == True:
+        conf.print()
 
     borg = Borgrunner( conf )
 
-    for strCommand in a_argv[2:]:
+    for strCommand in lstCommand:
         if strCommand == 'backup':
-            borg.run( pargs.verbose, BackupType.BACKUP )
+            borg.run( pargs.verbose, BackupType.BACKUP, strBorgPass )
         elif strCommand == 'prune':
-            borg.run( pargs.verbose, BackupType.PRUNE )
+            borg.run( pargs.verbose, BackupType.PRUNE, strBorgPass )
         elif strCommand == 'info':
-            borg.run( pargs.verbose, BackupType.INFO )
+            borg.run( pargs.verbose, BackupType.INFO, strBorgPass )
+        elif strCommand == 'list':
+            borg.run( pargs.verbose, BackupType.LIST, strBorgPass )
         else:
             print( 'Unknown command: {}'.format( strCommand ) )
             sys.exit( 1 )
