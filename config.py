@@ -57,32 +57,63 @@ class Config():
 
     def __init__( self ):
         self.url = ''
+        self.errors = []
 
 
     def open( self, a_strConfigPath ):
         with open( a_strConfigPath, 'r' ) as stream:
             try:
                 yml = yaml.safe_load( stream )
-                self.url   = yml['repos']['url']
-                self.dryrun= yml['repos']['dryrun']
-                self.flags = yml['repos']['flags']
+                if not self.exists( yml, 'repos' ):
+                    self.setError( 'no repo key in yaml' )
+                    return False
+                repo = yml[ 'repos' ]
 
-                self.archive = yml[ 'repos' ][ 'archive' ]
+                self.url   = repo[ 'url' ]  if self.exists( repo, 'url'  ) else None
+                self.dryrun= repo['dryrun'] if self.exists( repo, 'url'  ) else False
+                self.flags = repo['flags']  if self.exists( repo, 'flags') else None
+
+                if self.exists( repo, 'archive' ):
+                    self.archive = repo[ 'archive' ]
+                else:
+                    self.archive = None
+                    self.setError( 'no archive section' )
+                    return False
+
                 self.archiveIndex = 0
 
             except yaml.YAMLError as e:
                 print( 'Error in config file' )
+                return False
+            else:
+                return True
+
+    def setError( self, a_strMessage: str ):
+        self.errors.append( a_strMessage )
+
+    def isError( self ):
+        return len( self.errors ) > 0
+
+    def getErrors( self ):
+        return self.errors
+
+    def exists( self, a_obj, a_strValue:str ):
+        return a_strValue in a_obj
 
 
     def archiveCount( self ):
         return len( self.archive )
+
 
     '''
     point to the first archive
     '''
     def firstArchive( self ):
         self.archiveIndex = 0
-        return self.archive[ self.archiveIndex ]
+        if len( self.archive ) > 0 and self.archive is not None:
+            return True, self.archive[ self.archiveIndex ]
+        else:
+            return False, None
 
     '''
     point to the next archive
@@ -91,27 +122,39 @@ class Config():
         if self.archiveIndex < self.archiveCount():
             self.archiveIndex += 1
             if self.archiveIndex >= self.archiveCount():
-                return None
+                return False, None
             else:
-                return self.archive[ self.archiveIndex ]
+                return True, self.archive[ self.archiveIndex ]
 
     '''
     return current archive pointed to
     '''
     def getArchive( self ):
-        return self.archive[ self.archiveIndex ]
+        if self.a_archive is not None:
+            return self.archive[ self.archiveIndex ]
+        else:
+            return None
 
     '''
     get a value in the archive elemenet
     '''
-    def getArchiveValue( self, archive, name ):
-        return archive[ name ]
+    def getArchiveValue( self, a_archive, a_strName ):
+        if a_archive is not None:
+            return a_archive[ a_strName ] if self.exists( a_archive, a_strName ) else None
+        else:
+            return None
 
-    def getPrune( self, archive ):
-        return archive[ 'prune' ]
+    def getPrune( self, a_archive ):
+        if a_archive is not None:
+            return a_archive['prune'] if self.exists( a_archive, 'prune' ) else None
+        else:
+            return None
 
-    def getPruneValue( self, archive, name ):
-        return archive[ 'prune' ][ name ]
+    def getPruneValue( self, a_archive, a_strName ):
+        if a_archive is not None:
+            return a_archive['prune'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
+        else:
+            return None
 
     @property
     def url( self ):

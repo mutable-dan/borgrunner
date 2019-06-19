@@ -34,7 +34,15 @@ class Borgrunner():
         self.includes    = None
         self.excludes    = None
         self.excludeFile = None
+        self.password    = None
+        self.rsh         = None
 
+
+    def passwd( self, a_strPwd: str ):
+        self.password = a_strPwd
+
+    def privateKey( self, a_strPathToKey ):
+        self.rsh = 'ssh -i ' + a_strPathToKey
 
     '''
     borg command to amke a backup snapshot
@@ -42,12 +50,41 @@ class Borgrunner():
     def createCommand( self, a_archive ):
         prefixName  = self.config.getArchiveValue( a_archive, self.config.prefixName() )
         postfixName = self.config.getArchiveValue( a_archive, self.config.postfixName() )
-        includes    = ' '.join( self.config.getArchiveValue( a_archive, self.config.includes() ) )
-        excludes    = '-e ' + ' -e '.join( self.config.getArchiveValue( a_archive, self.config.excludes() ) )
-        excludeFile = '--exclude-from ' + ' --exclude-from '.join( self.config.getArchiveValue( a_archive, self.config.exclude_files() ) )
-        dryrun      = self.config.dryrun
 
+        includes    = str()
+        excludes    = str()
+        excludeFile = str()
+
+        lstInclude = self.config.getArchiveValue( a_archive, self.config.includes() )
+        if lstInclude is not None:
+            includes    = ' '.join( lstInclude )
+        else:
+            includes = ''
+
+        lstExcludes = self.config.getArchiveValue( a_archive, self.config.excludes() )
+        if lstExcludes is not None:
+            excludes = '-e ' + ' -e '.join( lstExcludes )
+        else:
+            excludes = ''
+
+        lstExclFrom = self.config.getArchiveValue( a_archive, self.config.exclude_files() )
+        if lstExclFrom is not None:
+            excludeFile = '--exclude-from ' + ' --exclude-from '.join( lstExclFrom )
+        else:
+            excludeFile = ''
+
+
+
+        dryrun      = self.config.dryrun
         flags = self.flags
+
+        if self.url is None: return False, None
+        postfixName = postfixName if not None else ''
+        #includes    = includes    if not None else ''
+        #excludes    = excludes    if not None else ''
+        #excludeFile = excludeFile if not None else ''
+        dryrun      = dryrun      if not None else False
+        flags       = flags       if not None else []
 
         if dryrun:
             if '-s' in flags:
@@ -56,7 +93,7 @@ class Borgrunner():
                 self.flags.remove( '--stats' )
             flags += [ '--dry-run' ]
 
-        return ( 'borg',
+        return True, ( 'borg',
                  self.create.format( flags      =' '.join(flags),
                                      url        =self.url,
                                      prefixName =prefixName,
@@ -76,12 +113,21 @@ class Borgrunner():
         prefixName  = self.config.getArchiveValue( a_archive, self.config.prefixName() )
         keep        = self.config.getPruneValue( a_archive, self.config.keep() )
 
+        if prefixName is None:
+            # error condition
+            return False, None
+
+        flags = self.config.getPruneValue( a_archive, self.config.archflags() )
+
+        if self.url is None: return False, None
+        bUsePrefix  = bUsePrefix  if not None else False
+        dryrun      = dryrun      if not None else False
+        flags       = flags       if not None else []
+        keep        = keep        if not None else []
+
         strKeep = ''
         for key in keep:
             strKeep += "--{}={} ".format( key, keep[ key ] )
-
-
-        flags = self.config.getPruneValue( a_archive, self.config.archflags() )
 
         if dryrun:
             if '-s' in flags:
@@ -96,7 +142,7 @@ class Borgrunner():
             prefixFlag      = ''
             prunePrefixName = ''
 
-        return ( 'borg',
+        return True, ( 'borg',
                  self.prune.format( prefixFlag= prefixFlag,
                                     prunePrefixName= prunePrefixName,
                                     flags     = ' '.join( flags ),
@@ -131,8 +177,10 @@ class Borgrunner():
     '''
     run a borg command
     '''
-    def run( self, a_bVerbose: bool, a_Command: BackupType, a_strPassword: str ):
-        archive = self.config.firstArchive()
+    def run( self, a_bVerbose: bool, a_Command: BackupType ):
+        bRes, archive = self.config.firstArchive()
+        if bRes == False:
+            return
 
         while archive is not None:
             if a_Command == BackupType.BACKUP:
@@ -150,22 +198,26 @@ class Borgrunner():
             if a_bVerbose == True:
                 print( 'exec:{} {}'.format( strCmd, strParam ) )
 
-            strReturn = self.sysCall( strCmd, strParam, a_strPassword )
+            strReturn = self.sysCall( strCmd, strParam )
             if a_bVerbose == True:
                 print( 'return info: {}'.format( strReturn ) )
-            archive = self.config.nextArchive()
+            bRes, archive = self.config.nextArchive()
 
 
     '''
     do the system call
     '''
-    def sysCall( self, a_cmd: str, a_params: str, a_strPassword: str ):
+    def sysCall( self, a_cmd: str, a_params: str ):
         aCall = []
         aCall.append( a_cmd )
         aCall += a_params.split()
 
-        if a_strPassword is not None:
-            denv = { 'BORG_PASSPHRASE' : a_strPassword }
+        if self.password is not None:
+            denv = { 'BORG_PASSPHRASE' : self.password }
+
+        if self.rsh is not None:
+            denv[ 'BORG_RSH' ] = self.rsh
+
             res = subprocess.run( aCall, shell=False, env=denv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
                                   universal_newlines=True )
         else:
@@ -182,6 +234,11 @@ def usage( a_args ):
     print( 'usage: {} yaml.yaml command,...'.format( a_args[0] ) )
     print( '  commands: backup, prune, info, list, check fullcheck, mount, umount, break-lock' )
 
+def exitFailed():
+    sys.exit( 1 )
+
+def exitOK():
+    sys.exit( 0 )
 
 def main( a_argv=None ):
     if a_argv is None:
@@ -189,7 +246,7 @@ def main( a_argv=None ):
 
     if len( a_argv ) < 2:
         usage( a_argv )
-        sys.exit( 1 )
+        exitFailed()
 
     strAllcommands = 'backup, prune, info, list check fullcheck, mount, umount, break-lock'
     parser = argparse.ArgumentParser( 'borgrunner' )
@@ -205,8 +262,9 @@ def main( a_argv=None ):
     parser.add_argument( 'command_arg8', type=str, help='Backup command: ' + strAllcommands, nargs='?' )
 
     parser.add_argument( '-P', '--password', type=str, help='borg passphase' )
-    parser.add_argument( '-v', '--verbose', help='verbose mode', action='store_true' )
-    parser.add_argument( '--version',       help='borg version' )
+    parser.add_argument( '-i',               type=str, help='borg path to ssh key' )
+    parser.add_argument( '-v', '--verbose',            help='verbose mode', action='store_true' )
+    parser.add_argument( '--version',                  help='borg version' )
 
     pargs = parser.parse_args()
     if pargs.verbose == True:
@@ -239,31 +297,34 @@ def main( a_argv=None ):
     if pargs.command_arg8 is not None:
         lstCommand.append( pargs.command_arg8 )
 
-    strBorgPass = None
-    if pargs.password is not None:
-        strBorgPass = pargs.password
-
-
-
     conf = config.Config()
-    conf.open( pargs.yaml_arg )
+    if conf.open( pargs.yaml_arg ) == False:
+        print( "error", conf.getErrors() )
+        exitFailed()
+
     if pargs.verbose == True:
         conf.print()
 
     borg = Borgrunner( conf )
+    if pargs.password is not None:
+        borg.passwd( pargs.password )
+
+    if pargs.i is not None:
+        borg.privateKey( pargs.i )
+
 
     for strCommand in lstCommand:
         if strCommand == 'backup':
-            borg.run( pargs.verbose, BackupType.BACKUP, strBorgPass )
+            borg.run( pargs.verbose, BackupType.BACKUP )
         elif strCommand == 'prune':
-            borg.run( pargs.verbose, BackupType.PRUNE, strBorgPass )
+            borg.run( pargs.verbose, BackupType.PRUNE )
         elif strCommand == 'info':
-            borg.run( pargs.verbose, BackupType.INFO, strBorgPass )
+            borg.run( pargs.verbose, BackupType.INFO )
         elif strCommand == 'list':
-            borg.run( pargs.verbose, BackupType.LIST, strBorgPass )
+            borg.run( pargs.verbose, BackupType.LIST )
         else:
             print( 'Unknown command: {}'.format( strCommand ) )
-            sys.exit( 1 )
+            exitFailed()
 
     print( 'completed' )
 
