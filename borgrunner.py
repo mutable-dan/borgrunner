@@ -210,7 +210,7 @@ class Borgrunner():
     def sysCall( self, a_cmd: str, a_params: str ):
         aCall = []
         aCall.append( a_cmd )
-        aCall.append( a_params )
+        aCall += a_params.split() 
 
         if self.password is not None:
             denv = { 'BORG_PASSPHRASE' : self.password }
