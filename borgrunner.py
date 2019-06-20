@@ -93,7 +93,7 @@ class Borgrunner():
                 self.flags.remove( '--stats' )
             flags += [ '--dry-run' ]
 
-        return True, ( 'borg',
+        return  ( 'borg',
                  self.create.format( flags      =' '.join(flags),
                                      url        =self.url,
                                      prefixName =prefixName,
@@ -142,7 +142,7 @@ class Borgrunner():
             prefixFlag      = ''
             prunePrefixName = ''
 
-        return True, ( 'borg',
+        return  ( 'borg',
                  self.prune.format( prefixFlag= prefixFlag,
                                     prunePrefixName= prunePrefixName,
                                     flags     = ' '.join( flags ),
@@ -154,7 +154,7 @@ class Borgrunner():
     borg in fo command
     '''
     def infoCommand( self ):
-        return ( 'borg', self.info.format( url = self.url ) )
+        return  'borg', self.info.format( url = self.url )
 
     '''
     broken borg list
@@ -210,7 +210,7 @@ class Borgrunner():
     def sysCall( self, a_cmd: str, a_params: str ):
         aCall = []
         aCall.append( a_cmd )
-        aCall += a_params.split()
+        aCall.append( a_params )
 
         if self.password is not None:
             denv = { 'BORG_PASSPHRASE' : self.password }
