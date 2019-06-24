@@ -69,9 +69,9 @@ class Config():
                     return False
                 repo = yml[ 'repos' ]
 
-                self.url   = repo[ 'url' ]  if self.exists( repo, 'url'  ) else None
-                self.dryrun= repo['dryrun'] if self.exists( repo, 'url'  ) else False
-                self.flags = repo['flags']  if self.exists( repo, 'flags') else None
+                self.url   = repo[ 'url' ]  if self.exists( repo, 'url'    ) else None
+                self.dryrun= repo['dryrun'] if self.exists( repo, 'dryrun' ) else False
+                self.flags = repo['flags']  if self.exists( repo, 'flags'  ) else None
 
                 if self.exists( repo, 'archive' ):
                     self.archive = repo[ 'archive' ]
@@ -173,7 +173,7 @@ class Config():
     @property
     def dryrun( self ):
             return self.__dryrun
-    @flags.setter
+    @dryrun.setter
     def dryrun( self, value ):
         self.__dryrun = value
 

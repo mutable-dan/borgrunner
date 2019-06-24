@@ -22,10 +22,6 @@ class Borgrunner():
         self.command = 'borg'
         self.config = a_config
 
-        self.prune  = 'prune {prefixFlag} {prunePrefixName} {flags} {keep} {url}'
-        self.info = 'info --sort-by name {url}'
-
-
 
         self.flags       = a_config.flags
         self.url         = a_config.url
@@ -48,7 +44,7 @@ class Borgrunner():
     borg command to amke a backup snapshot
     '''
     def createCommand( self, a_archive ):
-        createcmd = [ 'create', '{flags}',  '{url}::{prefixName}-{postfixName}', '{includes}', '{excludes}', '{excludefrom}' ]
+        strcreatecmd = 'create {flags} {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
 
         prefixName  = self.config.getArchiveValue( a_archive, self.config.prefixName() )
         postfixName = self.config.getArchiveValue( a_archive, self.config.postfixName() )
@@ -92,34 +88,20 @@ class Borgrunner():
                 self.flags.remove( '--stats' )
             flags += [ '--dry-run' ]
 
-        # flags
-        createcmd[1] = createcmd[1].format( flags = flags )
-        # url, prefi, postfix names
-        createcmd[2] = createcmd[2].format( url = self.url, prefixName = prefixName, postfixName = postfixName )
-        # includes
-        createcmd[3] = createcmd[3].format( includes = includes )
-        # excludes
-        createcmd[4] = createcmd[4].format( excludes = excludes )
-        # excludefrom
-        createcmd[5] = createcmd[5].format( excludefrom = excludeFile )
-
-        return createcmd
-        '''
-        return  ( 'borg',
-                 create.format( flags      =' '.join(flags),
+        return strcreatecmd.format( flags      =' '.join(flags),
                                      url        =self.url,
                                      prefixName =prefixName,
                                      postfixName=postfixName,
                                      includes   =includes,
                                      excludes   =excludes,
                                      excludefrom=excludeFile )
-                 )
-        '''
 
     '''
     borg command for pruning snapshots
     '''
     def pruneCommand( self, a_archive ):
+        prune  = 'prune {prefixFlag} {prunePrefixName} {flags} {keep} {url}'
+
         bUsePrefix  = self.config.getPruneValue( a_archive, self.config.pruneUsePrefix() )
         dryrun      = self.config.dryrun
 
@@ -155,28 +137,27 @@ class Borgrunner():
             prefixFlag      = ''
             prunePrefixName = ''
 
-        return  ( 'borg',
-                 self.prune.format( prefixFlag= prefixFlag,
+        return  prune.format( prefixFlag= prefixFlag,
                                     prunePrefixName= prunePrefixName,
                                     flags     = ' '.join( flags ),
                                     keep      = strKeep,
                                     url       = self.url )
-                 )
 
     '''
     borg in fo command
     '''
     def infoCommand( self ):
-        return  'borg', self.info.format( url = self.url )
+        info = 'info --sort-by name {url}'
+        return  info.format( url = self.url )
 
     '''
     broken borg list
         parsing for sys call is broken
     '''
     def listCommand( self ):
-        listcmd = ['list', '--sort-by', 'name', '--format', '"{{time}} --> {{name}}{{LF}}"', '{url}']
-        listcmd[5] = listcmd[5].format( url = self.url )
-        return listcmd
+        strlist = 'list --sort-by name --format="{{time}} --> {{name}}{{LF}}" {url}'.format( url= self.url )
+        return strlist
+
 
 
     '''
@@ -199,11 +180,11 @@ class Borgrunner():
 
         while archive is not None:
             if a_Command == BackupType.BACKUP:
-                strCmd, strParam = self.createCommand( archive )
+                strParam = self.createCommand( archive )
             elif a_Command == BackupType.PRUNE:
                 strCmd, strParam = self.pruneCommand( archive )
             elif a_Command == BackupType.INFO:
-                strCmd, strParam = self.infoCommand( )
+                strParam = self.infoCommand( )
             elif a_Command == BackupType.LIST:
                 strParam = self.listCommand( )
             else:
@@ -223,9 +204,9 @@ class Borgrunner():
     do the system call
     '''
     def sysCall( self, a_cmd: str, a_params: str ):
-        aCall = []
-        aCall.append( a_cmd )
-        aCall += a_params
+        # aCall = []
+        # aCall.append( a_cmd )
+        # aCall += a_params
 
         if self.password is not None:
             denv = { 'BORG_PASSPHRASE' : self.password }
@@ -236,7 +217,8 @@ class Borgrunner():
             res = subprocess.run( aCall, shell=False, env=denv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
                                   universal_newlines=True )
         else:
-            res = subprocess.run( aCall, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
+            strc = a_cmd + ' ' + a_params
+            res = subprocess.run( strc, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
 
         if res.returncode == 0:
             return 'completed: {}'.format( res.stdout )
