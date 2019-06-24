@@ -19,11 +19,11 @@ class BackupType:
 class Borgrunner():
 
     def __init__( self, a_config ):
+        self.command = 'borg'
         self.config = a_config
-        self.create = 'create {flags}  {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
+
         self.prune  = 'prune {prefixFlag} {prunePrefixName} {flags} {keep} {url}'
         self.info = 'info --sort-by name {url}'
-        self.list = 'list --sort-by name --format="{{time}} --> {{name}}{{LF}}" {url}'
 
 
 
@@ -48,6 +48,8 @@ class Borgrunner():
     borg command to amke a backup snapshot
     '''
     def createCommand( self, a_archive ):
+        createcmd = [ 'create', '{flags}',  '{url}::{prefixName}-{postfixName}', '{includes}', '{excludes}', '{excludefrom}' ]
+
         prefixName  = self.config.getArchiveValue( a_archive, self.config.prefixName() )
         postfixName = self.config.getArchiveValue( a_archive, self.config.postfixName() )
 
@@ -80,9 +82,6 @@ class Borgrunner():
 
         if self.url is None: return False, None
         postfixName = postfixName if not None else ''
-        #includes    = includes    if not None else ''
-        #excludes    = excludes    if not None else ''
-        #excludeFile = excludeFile if not None else ''
         dryrun      = dryrun      if not None else False
         flags       = flags       if not None else []
 
@@ -93,8 +92,21 @@ class Borgrunner():
                 self.flags.remove( '--stats' )
             flags += [ '--dry-run' ]
 
+        # flags
+        createcmd[1] = createcmd[1].format( flags = flags )
+        # url, prefi, postfix names
+        createcmd[2] = createcmd[2].format( url = self.url, prefixName = prefixName, postfixName = postfixName )
+        # includes
+        createcmd[3] = createcmd[3].format( includes = includes )
+        # excludes
+        createcmd[4] = createcmd[4].format( excludes = excludes )
+        # excludefrom
+        createcmd[5] = createcmd[5].format( excludefrom = excludeFile )
+
+        return createcmd
+        '''
         return  ( 'borg',
-                 self.create.format( flags      =' '.join(flags),
+                 create.format( flags      =' '.join(flags),
                                      url        =self.url,
                                      prefixName =prefixName,
                                      postfixName=postfixName,
@@ -102,6 +114,7 @@ class Borgrunner():
                                      excludes   =excludes,
                                      excludefrom=excludeFile )
                  )
+        '''
 
     '''
     borg command for pruning snapshots
@@ -161,7 +174,9 @@ class Borgrunner():
         parsing for sys call is broken
     '''
     def listCommand( self ):
-        return ( 'borg', self.list.format( url = self.url ) )
+        listcmd = ['list', '--sort-by', 'name', '--format', '"{{time}} --> {{name}}{{LF}}"', '{url}']
+        listcmd[5] = listcmd[5].format( url = self.url )
+        return listcmd
 
 
     '''
@@ -190,15 +205,15 @@ class Borgrunner():
             elif a_Command == BackupType.INFO:
                 strCmd, strParam = self.infoCommand( )
             elif a_Command == BackupType.LIST:
-                strCmd, strParam = self.listCommand( )
+                strParam = self.listCommand( )
             else:
                 print( 'unknown command' )
                 return
 
             if a_bVerbose == True:
-                print( 'exec:{} {}'.format( strCmd, strParam ) )
+                print( 'exec:{} {}'.format( self.command, strParam ) )
 
-            strReturn = self.sysCall( strCmd, strParam )
+            strReturn = self.sysCall( self.command, strParam )
             if a_bVerbose == True:
                 print( 'return info: {}'.format( strReturn ) )
             bRes, archive = self.config.nextArchive()
@@ -210,7 +225,7 @@ class Borgrunner():
     def sysCall( self, a_cmd: str, a_params: str ):
         aCall = []
         aCall.append( a_cmd )
-        aCall += a_params.split() 
+        aCall += a_params
 
         if self.password is not None:
             denv = { 'BORG_PASSPHRASE' : self.password }
