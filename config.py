@@ -211,20 +211,24 @@ class Config():
         return 'keep'
 
     def print( self ):
-        print( "config:" )
-        print( "  url           :", self.url )
-        print( "  flags         :", self.flags )
-        print( "  dry-run       :", self.dryrun )
-        print()
+        print(  self.yaml() )
+
+    def yaml( self ):
+        strYml = "config:"
+        strYml += "  url           :" + self.url           + '\n'
+        strYml += "  flags         :" + str( self.flags )  + '\n'
+        strYml += "  dry-run       :" + str( self.dryrun)  + '\n'
+        strYml += "\n"
 
         for item in self.archive:
-            print( "  prefixName    :", self.getArchiveValue( item, self.prefixName()    ) )
-            print( "  postfixName   :", self.getArchiveValue( item, self.postfixName()   ) )
-            print( "  flags         :", self.getArchiveValue( item, self.archflags()     ) )
-            print( "  includes      :", self.getArchiveValue( item, self.includes()      ) )
-            print( "  excludes      :", self.getArchiveValue( item, self.excludes()      ) )
-            print( "  exclude-files :", self.getArchiveValue( item, self.exclude_files() ) )
-            print( "    prune prefix:", self.getPruneValue  ( item, self.pruneUsePrefix()) )
-            print( "     keep       :", self.getPruneValue  ( item, self.keep()          ) )
-            print( '  -----------------------------------------------------' )
+            strYml +=  "  postfixName   :" + self.getArchiveValue( item, self.postfixName()   )        + '\n'
+            strYml +=  "  flags         :" + str( self.getArchiveValue( item, self.archflags()     ) ) + '\n'
+            strYml +=  "  includes      :" + str( self.getArchiveValue( item, self.includes()      ) ) + '\n'
+            strYml +=  "  excludes      :" + str( self.getArchiveValue( item, self.excludes()      ) ) + '\n'
+            strYml +=  "  prefixName    :" + self.getArchiveValue( item, self.prefixName()    )        + '\n'
+            strYml +=  "  exclude-files :" + str( self.getArchiveValue( item, self.exclude_files() ) ) + '\n'
+            strYml +=  "    prune prefix:" + str( self.getPruneValue  ( item, self.pruneUsePrefix()) ) + '\n'
+            strYml +=  "     keep       :" + str( self.getPruneValue  ( item, self.keep()          ) ) + '\n'
+            strYml +=  '  -----------------------------------------------------\n'
+        return strYml
 

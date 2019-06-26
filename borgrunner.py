@@ -4,6 +4,9 @@ import sys
 import config
 import subprocess
 import argparse
+import logging
+
+g_loggerName = 'borg'
 
 class BackupType:
     BACKUP    = 1
@@ -241,6 +244,20 @@ def main( a_argv=None ):
     if a_argv is None:
         a_argv = sys.argv
 
+    log = logging.getLogger( g_loggerName )
+    log.setLevel( logging.INFO )
+    logFileHandler = logging.FileHandler( 'borgrunner.log' )
+    logConsoleHandler = logging.StreamHandler()
+    formatter = logging.Formatter( '%(asctime)s - %(name)s - %(levelname)s - %(message)s' )
+
+    logFileHandler.setLevel( logging.INFO )
+    logConsoleHandler.setLevel( logging.INFO )
+    logFileHandler.setFormatter( formatter )
+    log.addHandler( logFileHandler )
+    log.addHandler( logConsoleHandler )
+
+    log.info( '{} starting'.format( a_argv[0] ) )
+
     if len( a_argv ) < 2:
         usage( a_argv )
         exitFailed()
@@ -300,7 +317,7 @@ def main( a_argv=None ):
         exitFailed()
 
     if pargs.verbose == True:
-        conf.print()
+        print( conf.yaml() )
 
     borg = Borgrunner( conf )
     if pargs.password is not None:
