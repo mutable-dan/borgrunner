@@ -211,9 +211,9 @@ class Config():
         return 'keep'
 
     def print( self ):
-        print(  self.yaml() )
+        print( self.show() )
 
-    def yaml( self ):
+    def show( self ):
         strYml = "config:"
         strYml += "  url           :" + self.url           + '\n'
         strYml += "  flags         :" + str( self.flags )  + '\n'

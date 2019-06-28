@@ -21,13 +21,14 @@ class BackupType:
 
 class Borgrunner():
 
-    def __init__( self, a_config ):
+    def __init__( self, config, logname ):
         self.command = 'borg'
-        self.config = a_config
+        self.config = config
+        self.log = logging.getLogger( logname )
 
 
-        self.flags       = a_config.flags
-        self.url         = a_config.url
+        self.flags       = config.flags
+        self.url         = config.url
         self.prefixName  = None
         self.postfixName = None
         self.includes    = None
@@ -46,29 +47,29 @@ class Borgrunner():
     '''
     borg command to amke a backup snapshot
     '''
-    def createCommand( self, a_archive ):
+    def createCommand( self, archive ):
         strcreatecmd = 'create {flags} {url}::{prefixName}-{postfixName} {includes} {excludes} {excludefrom}'
 
-        prefixName  = self.config.getArchiveValue( a_archive, self.config.prefixName() )
-        postfixName = self.config.getArchiveValue( a_archive, self.config.postfixName() )
+        prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
+        postfixName = self.config.getArchiveValue( archive, self.config.postfixName() )
 
         includes    = str()
         excludes    = str()
         excludeFile = str()
 
-        lstInclude = self.config.getArchiveValue( a_archive, self.config.includes() )
+        lstInclude = self.config.getArchiveValue( archive, self.config.includes() )
         if lstInclude is not None:
             includes    = ' '.join( lstInclude )
         else:
             includes = ''
 
-        lstExcludes = self.config.getArchiveValue( a_archive, self.config.excludes() )
+        lstExcludes = self.config.getArchiveValue( archive, self.config.excludes() )
         if lstExcludes is not None:
             excludes = '-e ' + ' -e '.join( lstExcludes )
         else:
             excludes = ''
 
-        lstExclFrom = self.config.getArchiveValue( a_archive, self.config.exclude_files() )
+        lstExclFrom = self.config.getArchiveValue( archive, self.config.exclude_files() )
         if lstExclFrom is not None:
             excludeFile = '--exclude-from ' + ' --exclude-from '.join( lstExclFrom )
         else:
@@ -102,20 +103,20 @@ class Borgrunner():
     '''
     borg command for pruning snapshots
     '''
-    def pruneCommand( self, a_archive ):
+    def pruneCommand( self, archive ):
         prune  = 'prune {prefixFlag} {prunePrefixName} {flags} {keep} {url}'
 
-        bUsePrefix  = self.config.getPruneValue( a_archive, self.config.pruneUsePrefix() )
+        bUsePrefix  = self.config.getPruneValue( archive, self.config.pruneUsePrefix() )
         dryrun      = self.config.dryrun
 
-        prefixName  = self.config.getArchiveValue( a_archive, self.config.prefixName() )
-        keep        = self.config.getPruneValue( a_archive, self.config.keep() )
+        prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
+        keep        = self.config.getPruneValue( archive, self.config.keep() )
 
         if prefixName is None:
             # error condition
             return False, None
 
-        flags = self.config.getPruneValue( a_archive, self.config.archflags() )
+        flags = self.config.getPruneValue( archive, self.config.archflags() )
 
         if self.url is None: return False, None
         bUsePrefix  = bUsePrefix  if not None else False
@@ -164,69 +165,67 @@ class Borgrunner():
 
 
     '''
-    def show( self ):
-        archive = self.config.firstArchive()
-
-        while archive is not None:
-            print( "{}".format( self.createCommand( archive )[2] ) )
-            print()
-            archive = self.config.nextArchive()
-    '''
-
-    '''
     run a borg command
     '''
-    def run( self, a_bVerbose: bool, a_Command: BackupType ):
+    def run( self, command: BackupType ):
         bRes, archive = self.config.firstArchive()
         if bRes == False:
             return
 
         while archive is not None:
-            if a_Command == BackupType.BACKUP:
+            if command == BackupType.BACKUP:
                 strParam = self.createCommand( archive )
-            elif a_Command == BackupType.PRUNE:
-                strCmd, strParam = self.pruneCommand( archive )
-            elif a_Command == BackupType.INFO:
+            elif command == BackupType.PRUNE:
+                strParam = self.pruneCommand( archive )
+            elif command == BackupType.INFO:
                 strParam = self.infoCommand( )
-            elif a_Command == BackupType.LIST:
+            elif command == BackupType.LIST:
                 strParam = self.listCommand( )
             else:
-                print( 'unknown command' )
+                self.log.warning( 'unknown command:{}'.format( command ) )
                 return
 
-            if a_bVerbose == True:
-                print( 'exec:{} {}'.format( self.command, strParam ) )
+            self.log.debug( 'exec:{} {}'.format( self.command, strParam ) )
 
-            strReturn = self.sysCall( self.command, strParam )
-            if a_bVerbose == True:
-                print( 'return info: {}'.format( strReturn ) )
+            bSuceeded, strReturn = self.sysCall( self.command, strParam )
+            for str in strReturn.split( '\n' ):
+                if bSuceeded == True:
+                    self.log.info( '{}'.format( str ) )
+                else:
+                    self.log.error( '{}'.format( str ) )
+
             bRes, archive = self.config.nextArchive()
 
 
     '''
     do the system call
     '''
-    def sysCall( self, a_cmd: str, a_params: str ):
-        # aCall = []
-        # aCall.append( a_cmd )
-        # aCall += a_params
+    def sysCall( self, a_cmd: str, params: str ):
 
+        denv = {}
         if self.password is not None:
             denv = { 'BORG_PASSPHRASE' : self.password }
-
         if self.rsh is not None:
             denv[ 'BORG_RSH' ] = self.rsh
 
-            res = subprocess.run( aCall, shell=False, env=denv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
-                                  universal_newlines=True )
-        else:
-            strc = a_cmd + ' ' + a_params
-            res = subprocess.run( strc, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
+        strc = a_cmd + ' ' + params
+        try:
+            if len( denv ) > 0:
+                res = subprocess.run( strc, shell=True, env=denv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
+            else:
+                res = subprocess.run( strc, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
 
-        if res.returncode == 0:
-            return 'completed: {}'.format( res.stdout )
-        else:
-            return 'failed: {}'.format( res.stderr )
+            if res.returncode == 0:
+                return True, '{}'.format( res.stdout )
+            else:
+                return False, '{}'.format( res.stderr )
+        except FileNotFoundError as fnfe:
+            return False, fnfe.strerror
+        except subprocess.CalledProcessError as cpe:
+            self.log.error( cpe.output )
+            return False, cpe.output
+        except:
+            return False, 'error calling borg: {}'.format( strc )
 
 
 
@@ -248,15 +247,14 @@ def main( a_argv=None ):
     log.setLevel( logging.INFO )
     logFileHandler = logging.FileHandler( 'borgrunner.log' )
     logConsoleHandler = logging.StreamHandler()
-    formatter = logging.Formatter( '%(asctime)s - %(name)s - %(levelname)s - %(message)s' )
+    logFormatter = logging.Formatter( '%(asctime)s - %(name)s - %(levelname)s - %(message)s' )
+    consoleFormatter = logging.Formatter( '%(levelname)s - %(message)s' )
 
-    logFileHandler.setLevel( logging.INFO )
-    logConsoleHandler.setLevel( logging.INFO )
-    logFileHandler.setFormatter( formatter )
+    logFileHandler.setFormatter( logFormatter )
+    logConsoleHandler.setFormatter( consoleFormatter )
     log.addHandler( logFileHandler )
     log.addHandler( logConsoleHandler )
 
-    log.info( '{} starting'.format( a_argv[0] ) )
 
     if len( a_argv ) < 2:
         usage( a_argv )
@@ -282,15 +280,26 @@ def main( a_argv=None ):
 
     pargs = parser.parse_args()
     if pargs.verbose == True:
-        print( 'config: {}'.format( pargs.yaml_arg ) )
-        print( 'commands: {}, {}, {}, {}, {}, {}, {}, {}'.format(
-            pargs.command_arg0, pargs.command_arg1,
-            pargs.command_arg2, pargs.command_arg3,
-            pargs.command_arg3, pargs.command_arg5,
-            pargs.command_arg6, pargs.command_arg7,
-            pargs.command_arg8   ) )
+        log.info( 'debug logging' )
+        log.setLevel( logging.DEBUG )
+        logFileHandler.setLevel( logging.DEBUG )
+        logConsoleHandler.setLevel( logging.DEBUG )
+    else:
+        log.setLevel( logging.INFO )
+        logFileHandler.setLevel( logging.INFO )
+        logConsoleHandler.setLevel( logging.INFO )
 
-        print()
+    log.info( '{} starting'.format( a_argv[0] ) )
+
+    strMsg1 = 'config: {}'.format( pargs.yaml_arg )
+    strMsg2 = 'commands: {}, {}, {}, {}, {}, {}, {}, {}'.format(
+        pargs.command_arg0, pargs.command_arg1,
+        pargs.command_arg2, pargs.command_arg3,
+        pargs.command_arg3, pargs.command_arg5,
+        pargs.command_arg6, pargs.command_arg7,
+        pargs.command_arg8 )
+    log.debug( strMsg1 )
+    log.debug( strMsg2 )
 
     lstCommand = []
     lstCommand.append( pargs.command_arg0 )
@@ -313,13 +322,13 @@ def main( a_argv=None ):
 
     conf = config.Config()
     if conf.open( pargs.yaml_arg ) == False:
-        print( "error", conf.getErrors() )
+        for strError in conf.getErrors():
+            log.error( strError )
         exitFailed()
 
-    if pargs.verbose == True:
-        print( conf.yaml() )
+    log.debug( conf.show() )
 
-    borg = Borgrunner( conf )
+    borg = Borgrunner( config=conf, logname=g_loggerName )
     if pargs.password is not None:
         borg.passwd( pargs.password )
 
@@ -329,18 +338,19 @@ def main( a_argv=None ):
 
     for strCommand in lstCommand:
         if strCommand == 'backup':
-            borg.run( pargs.verbose, BackupType.BACKUP )
+            borg.run( BackupType.BACKUP )
         elif strCommand == 'prune':
-            borg.run( pargs.verbose, BackupType.PRUNE )
+            borg.run( BackupType.PRUNE )
         elif strCommand == 'info':
-            borg.run( pargs.verbose, BackupType.INFO )
+            borg.run( BackupType.INFO )
         elif strCommand == 'list':
-            borg.run( pargs.verbose, BackupType.LIST )
+            borg.run( BackupType.LIST )
         else:
-            print( 'Unknown command: {}'.format( strCommand ) )
+            log.warning( 'Unknown command: {}'.format( strCommand ) )
             exitFailed()
 
-    print( 'completed' )
+    log.info( 'completed' )
+    logging.shutdown()
 
 if __name__ == "__main__":
     sys.exit( main( sys.argv ) )
