@@ -172,29 +172,47 @@ class Borgrunner():
         if bRes == False:
             return
 
-        while archive is not None:
-            if command == BackupType.BACKUP:
-                strParam = self.createCommand( archive )
-            elif command == BackupType.PRUNE:
-                strParam = self.pruneCommand( archive )
-            elif command == BackupType.INFO:
-                strParam = self.infoCommand( )
-            elif command == BackupType.LIST:
-                strParam = self.listCommand( )
-            else:
-                self.log.warning( 'unknown command:{}'.format( command ) )
-                return
-
-            self.log.debug( 'exec:{} {}'.format( self.command, strParam ) )
-
-            bSuceeded, strReturn = self.sysCall( self.command, strParam )
-            for str in strReturn.split( '\n' ):
-                if bSuceeded == True:
-                    self.log.info( '{}'.format( str ) )
+        # cooomands that work on repo
+        # info
+        # list
+        if command == BackupType.INFO:
+            strParam = self.infoCommand()
+        elif command == BackupType.LIST:
+            strParam = self.listCommand( )
+        else:
+            while archive is not None:
+                strCurrentCommand = 'na'
+                if command == BackupType.BACKUP:
+                    strParam = self.createCommand( archive )
+                    strCurrentCommand = 'backup/create'
+                elif command == BackupType.PRUNE:
+                    strParam = self.pruneCommand( archive )
+                    strCurrentCommand = 'prune'
                 else:
-                    self.log.error( '{}'.format( str ) )
+                    self.log.warning( 'unknown command:{}'.format( command ) )
+                    return
 
-            bRes, archive = self.config.nextArchive()
+                self.log.debug( 'exec:{} {}'.format( self.command, strParam ) )
+                self.log.info( '{} archive:{}'.format( strCurrentCommand, self.config.getArchiveValue( archive, self.config.prefixName() ) ) )
+
+                bSuceeded, strReturn = self.sysCall( self.command, strParam )
+                for str in strReturn.split( '\n' ):
+                    if bSuceeded == True:
+                        self.log.info( '{}'.format( str ) )
+                    else:
+                        self.log.error( '{}'.format( str ) )
+
+                bRes, archive = self.config.nextArchive()
+            return
+
+        self.log.debug( 'exec:{} {}'.format( self.command, strParam ) )
+
+        bSuceeded, strReturn = self.sysCall( self.command, strParam )
+        for str in strReturn.split( '\n' ):
+            if bSuceeded == True:
+                self.log.info( '{}'.format( str ) )
+            else:
+                self.log.error( '{}'.format( str ) )
 
 
     '''
@@ -205,8 +223,11 @@ class Borgrunner():
         denv = {}
         if self.password is not None:
             denv = { 'BORG_PASSPHRASE' : self.password }
+            self.log.debug( 'setting BORG_PASSPHRASE {}'.format( self.password ) )
+            print( )
         if self.rsh is not None:
             denv[ 'BORG_RSH' ] = self.rsh
+            self.log.debug( 'setting BORG_RSH {}'.format( self.rsh ) )
 
         strc = a_cmd + ' ' + params
         try:
