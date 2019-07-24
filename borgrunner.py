@@ -224,7 +224,6 @@ class Borgrunner():
         if self.password is not None:
             denv = { 'BORG_PASSPHRASE' : self.password }
             self.log.debug( 'setting BORG_PASSPHRASE {}'.format( self.password ) )
-            print( )
         if self.rsh is not None:
             denv[ 'BORG_RSH' ] = self.rsh
             self.log.debug( 'setting BORG_RSH {}'.format( self.rsh ) )
@@ -237,7 +236,10 @@ class Borgrunner():
                 res = subprocess.run( strc, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, universal_newlines=True )
 
             if res.returncode == 0:
-                return True, '{}'.format( res.stdout )
+                if len( res.stdout ) > 0:
+                    return True, '{}'.format( res.stdout )
+                else:
+                    return True, '{}'.format( res.stderr )
             else:
                 return False, '{}'.format( res.stderr )
         except FileNotFoundError as fnfe:
@@ -264,19 +266,6 @@ def main( a_argv=None ):
     if a_argv is None:
         a_argv = sys.argv
 
-    log = logging.getLogger( g_loggerName )
-    log.setLevel( logging.INFO )
-    logFileHandler = logging.FileHandler( 'borgrunner.log' )
-    logConsoleHandler = logging.StreamHandler()
-    logFormatter = logging.Formatter( '%(asctime)s - %(name)s - %(levelname)s - %(message)s' )
-    consoleFormatter = logging.Formatter( '%(levelname)s - %(message)s' )
-
-    logFileHandler.setFormatter( logFormatter )
-    logConsoleHandler.setFormatter( consoleFormatter )
-    log.addHandler( logFileHandler )
-    log.addHandler( logConsoleHandler )
-
-
     if len( a_argv ) < 2:
         usage( a_argv )
         exitFailed()
@@ -298,8 +287,29 @@ def main( a_argv=None ):
     parser.add_argument( '-i',               type=str, help='borg path to ssh key' )
     parser.add_argument( '-v', '--verbose',            help='verbose mode', action='store_true' )
     parser.add_argument( '--version',                  help='borg version' )
+    parser.add_argument( '-l', '--logpath', type=str, help='log path' )
 
     pargs = parser.parse_args()
+
+    strLogPath = pargs.logpath
+    if strLogPath is None:
+        strLogPath = 'borgrunner.log'
+
+    log = logging.getLogger( g_loggerName )
+    log.setLevel( logging.INFO )
+    logFileHandler = logging.FileHandler( strLogPath )
+    logConsoleHandler = logging.StreamHandler()
+    logFormatter = logging.Formatter( '%(asctime)s - %(name)s - %(levelname)s - %(message)s' )
+    consoleFormatter = logging.Formatter( '%(levelname)s - %(message)s' )
+
+    logFileHandler.setFormatter( logFormatter )
+    logConsoleHandler.setFormatter( consoleFormatter )
+    log.addHandler( logFileHandler )
+    log.addHandler( logConsoleHandler )
+
+
+
+
     if pargs.verbose == True:
         log.info( 'debug logging' )
         log.setLevel( logging.DEBUG )
