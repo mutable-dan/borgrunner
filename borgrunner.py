@@ -368,6 +368,7 @@ def main( a_argv=None ):
 
 
     for strCommand in lstCommand:
+        log.info( "------------- {} -------------".format( strCommand ) )
         if strCommand == 'backup':
             borg.run( BackupType.BACKUP )
         elif strCommand == 'prune':
