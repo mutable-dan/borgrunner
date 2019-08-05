@@ -5,16 +5,24 @@ import yaml
     ---
     repos:
         url: "repo"
-        flags: [ -s, --list, --filter, AME ]
         dry-run: false
         
         archive:
           - prefixName:  "test-report-dir1-dir2"
             postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
-            flags: [ "--one-file-system" ]
-            includes: [ 'test-docs/dir1', 'test-docs/dir2' ]
-            excludes: [ "test-docs/dir1/f1", "test-docs/dir2/f2" ]
-            exclude-files: [ "test-docs/excludes" ]
+
+            backup:
+                flags: [ -s, --list, --filter, AME, --one-file-system  ]
+                includes: [ 'test-docs/dir1', 'test-docs/dir2' ]
+                excludes: [ "test-docs/dir1/f1", "test-docs/dir2/f2" ]
+                exclude-files: [ "test-docs/excludes" ]
+                
+            info:
+              flags [ --sort-by name ]
+    
+            list:
+              flags: [ --sort-by name ]
+                
             prune:
                 usePrefix: true
                 dryrun: false
@@ -28,9 +36,19 @@ import yaml
           - prefixName:  "test-report-dir3"
             postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
             flags: [ "--one-file-system" ]
-            includes: [ 'test-docs/dir3' ]
-            excludes: [ "test-docs/dir3/f2" ]
-            exclude-files: [ "test-docs/excludes" ]
+
+            backup:
+                flags: [ -s, --list, --filter, AME, --one-file-system  ]
+                includes: [ 'test-docs/dir3' ]
+                excludes: [ "test-docs/dir3/f2" ]
+                exclude-files: [ "test-docs/excludes" ]
+                
+            info:
+              flags [ --sort-by name ]
+    
+            list:
+              flags: [ --sort-by name ]
+
             prune:
                 usePrefix: true
                 flags: [ "--stats", "--list", "--save-space" ]
@@ -71,7 +89,7 @@ class Config():
 
                 self.url   = repo[ 'url' ]  if self.exists( repo, 'url'    ) else None
                 self.dryrun= repo['dryrun'] if self.exists( repo, 'dryrun' ) else False
-                self.flags = repo['flags']  if self.exists( repo, 'flags'  ) else None
+                #self.flags = repo['flags']  if self.exists( repo, 'flags'  ) else None
 
                 if self.exists( repo, 'archive' ):
                     self.archive = repo[ 'archive' ]
@@ -83,7 +101,7 @@ class Config():
                 self.archiveIndex = 0
 
             except yaml.YAMLError as e:
-                print( 'Error in config file' )
+                self.setError( 'Error in config file: {}'.format( e ) )
                 return False
             else:
                 return True
@@ -150,65 +168,106 @@ class Config():
         else:
             return None
 
+    def getBackupValue( self, a_archive, a_strName ):
+        if a_archive is not None:
+            return a_archive['backup'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
+        else:
+            return None
+
+    def getInfoValue( self, a_archive, a_strName ):
+        if a_archive is not None:
+            return a_archive['info'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
+        else:
+            return None
+
+    def getListValue( self, a_archive, a_strName ):
+        if a_archive is not None:
+            return a_archive['list'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
+        else:
+            return None
+
+
     def getPruneValue( self, a_archive, a_strName ):
         if a_archive is not None:
             return a_archive['prune'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
         else:
             return None
 
+
+    '''
+    repo related tags
+    '''
     @property
     def url( self ):
-            return self.__url
+        return self.__url
     @url.setter
     def url( self, value ):
-            self.__url = value
-
-    @property
-    def flags( self ):
-            return self.__flags
-    @flags.setter
-    def flags( self, value ):
-        self.__flags = value
+        self.__url = value
 
     @property
     def dryrun( self ):
-            return self.__dryrun
+        return self.__dryrun
     @dryrun.setter
     def dryrun( self, value ):
         self.__dryrun = value
 
-
     @property
     def archive( self ):
-            return self.__archive
+        return self.__archive
     @archive.setter
     def archive( self, value ):
-            self.__archive = value
+        self.__archive = value
 
-
+    '''
+    archive related tags
+    '''
     def prefixName( self ):
         return 'prefixName'
 
     def postfixName( self ):
         return 'postfixName'
 
-    def includes( self ):
-        return 'includes'
-
-    def excludes( self ):
-        return 'excludes'
-
-    def exclude_files( self ):
-        return 'exclude-files'
-
-    def pruneUsePrefix( self ):
-        return 'usePrefix'
-
-    def archflags( self ):
+    '''
+    backup related tags
+    '''
+    def backup_flags( self ):
         return 'flags'
 
-    def keep( self ):
+    def backup_includes( self ):
+        return 'includes'
+
+    def backup_excludes( self ):
+        return 'excludes'
+
+    def backup_exclude_files( self ):
+        return 'exclude-files'
+
+    '''
+    info related tags
+    '''
+    def info_flags( self ):
+        return 'flags'
+
+    '''
+    list related tags
+    '''
+    def list_flags( self ):
+        return 'flags'
+
+
+    '''
+    prune related tags
+    '''
+    def prune_usePrefix( self ):
+        return 'usePrefix'
+
+    def prune_flags( self ):
+        return 'flags'
+
+    def prune_keep( self ):
         return 'keep'
+
+
 
     def print( self ):
         print( self.show() )
@@ -216,19 +275,18 @@ class Config():
     def show( self ):
         strYml = "config:"
         strYml += "  url           :" + self.url           + '\n'
-        strYml += "  flags         :" + str( self.flags )  + '\n'
         strYml += "  dry-run       :" + str( self.dryrun)  + '\n'
         strYml += "\n"
 
         for item in self.archive:
             strYml +=  "  postfixName   :" + self.getArchiveValue( item, self.postfixName()   )        + '\n'
-            strYml +=  "  flags         :" + str( self.getArchiveValue( item, self.archflags()     ) ) + '\n'
-            strYml +=  "  includes      :" + str( self.getArchiveValue( item, self.includes()      ) ) + '\n'
-            strYml +=  "  excludes      :" + str( self.getArchiveValue( item, self.excludes()      ) ) + '\n'
+            strYml +=  "  flags         :" + str( self.getArchiveValue( item, self.backup_flags()     ) ) + '\n'
+            strYml +=  "  includes      :" + str( self.getArchiveValue( item, self.backup_includes()      ) ) + '\n'
+            strYml +=  "  excludes      :" + str( self.getArchiveValue( item, self.backup_excludes()      ) ) + '\n'
             strYml +=  "  prefixName    :" + self.getArchiveValue( item, self.prefixName()    )        + '\n'
-            strYml +=  "  exclude-files :" + str( self.getArchiveValue( item, self.exclude_files() ) ) + '\n'
-            strYml +=  "    prune prefix:" + str( self.getPruneValue  ( item, self.pruneUsePrefix()) ) + '\n'
-            strYml +=  "     keep       :" + str( self.getPruneValue  ( item, self.keep()          ) ) + '\n'
+            strYml +=  "  exclude-files :" + str( self.getArchiveValue( item, self.backup_exclude_files() ) ) + '\n'
+            strYml +=  "    prune prefix:" + str( self.getPruneValue  ( item, self.prune_usePrefix() ) ) + '\n'
+            strYml +=  "     keep       :" + str( self.getPruneValue  ( item, self.prune_keep()     ) ) + '\n'
             strYml +=  '  -----------------------------------------------------\n'
         return strYml
 

@@ -27,13 +27,13 @@ class Borgrunner():
         self.log = logging.getLogger( logname )
 
 
-        self.flags       = config.flags
+        # self.flags       = config.flags
         self.url         = config.url
         self.prefixName  = None
         self.postfixName = None
-        self.includes    = None
-        self.excludes    = None
-        self.excludeFile = None
+        # self.includes    = None
+        # self.excludes    = None
+        # self.excludeFile = None
         self.password    = None
         self.rsh         = None
 
@@ -57,28 +57,26 @@ class Borgrunner():
         excludes    = str()
         excludeFile = str()
 
-        lstInclude = self.config.getArchiveValue( archive, self.config.includes() )
+        lstInclude = self.config.getBackupValue( archive, self.config.backup_includes() )
         if lstInclude is not None:
             includes    = ' '.join( lstInclude )
         else:
             includes = ''
 
-        lstExcludes = self.config.getArchiveValue( archive, self.config.excludes() )
+        lstExcludes = self.config.getBackupValue( archive, self.config.backup_excludes() )
         if lstExcludes is not None:
             excludes = '-e ' + ' -e '.join( lstExcludes )
         else:
             excludes = ''
 
-        lstExclFrom = self.config.getArchiveValue( archive, self.config.exclude_files() )
+        lstExclFrom = self.config.getBackupValue( archive, self.config.backup_exclude_files() )
         if lstExclFrom is not None:
             excludeFile = '--exclude-from ' + ' --exclude-from '.join( lstExclFrom )
         else:
             excludeFile = ''
 
-
-
         dryrun      = self.config.dryrun
-        flags = self.flags
+        flags = self.config.getBackupValue( archive, self.config.backup_flags() )
 
         if self.url is None: return False, None
         postfixName = postfixName if not None else ''
@@ -110,13 +108,13 @@ class Borgrunner():
         dryrun      = self.config.dryrun
 
         prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )
-        keep        = self.config.getPruneValue( archive, self.config.keep() )
+        keep        = self.config.getPruneValue( archive, self.config.prune_keep() )
 
         if prefixName is None:
             # error condition
             return False, None
 
-        flags = self.config.getPruneValue( archive, self.config.archflags() )
+        flags = self.config.getPruneValue( archive, self.config.prune_flags() )
 
         if self.url is None: return False, None
         bUsePrefix  = bUsePrefix  if not None else False
