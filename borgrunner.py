@@ -104,7 +104,7 @@ class Borgrunner():
     def pruneCommand( self, archive ):
         prune  = 'prune {prefixFlag} {prunePrefixName} {flags} {keep} {url}'
 
-        bUsePrefix  = self.config.getPruneValue( archive, self.config.pruneUsePrefix() )
+        bUsePrefix  = self.config.getPruneValue( archive, self.config.prune_usePrefix() )
         dryrun      = self.config.dryrun
 
         prefixName  = self.config.getArchiveValue( archive, self.config.prefixName() )

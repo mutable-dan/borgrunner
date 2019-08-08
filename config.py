@@ -170,28 +170,28 @@ class Config():
 
     def getBackupValue( self, a_archive, a_strName ):
         if a_archive is not None:
-            return a_archive['backup'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
-        else:
-            return None
+            if self.exists( a_archive, 'backup' ):
+                return a_archive['backup'][ a_strName ] if self.exists( a_archive['backup'], a_strName ) else None
+        return None
 
     def getInfoValue( self, a_archive, a_strName ):
         if a_archive is not None:
-            return a_archive['info'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
-        else:
-            return None
+            if self.exists( a_archive, 'backup' ):
+                return a_archive['info'][ a_strName ] if self.exists( a_archive['info'], a_strName ) else None
+        return None
 
     def getListValue( self, a_archive, a_strName ):
         if a_archive is not None:
-            return a_archive['list'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
-        else:
-            return None
+            if self.exists( a_archive, 'list' ):
+                return a_archive['list'][ a_strName ] if self.exists( a_archive['list'], a_strName ) else None
+        return None
 
 
     def getPruneValue( self, a_archive, a_strName ):
         if a_archive is not None:
-            return a_archive['prune'][ a_strName ] if self.exists( a_archive, 'prune' ) else None
-        else:
-            return None
+            if self.exists( a_archive, 'prune' ):
+                return a_archive['prune'][ a_strName ] if self.exists( a_archive['prune'], a_strName ) else None
+        return None
 
 
     '''
