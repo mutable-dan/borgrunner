@@ -1,9 +1,99 @@
 using keys on remote repo:
 
-./borgrunner.py borg.yaml list -P password -i /home/user/.ssh/borg-key
+./borgrunner.py {yaml file} [commands...] options
+
+commands:
+    backup
+    prune
+    info
+    list
+    
+    not implimented yet:
+        check fullcheck, mount, umount, break-lock
+
+options:        
+  -h, --help                            show help message
+  -P PASSWORD, --password PASSWORD      passphrase for repo keyfile
+  -i                                    path to ssh key for remote repository
+  -v, --verbose                         verbose mode
+  -l LOGPATH, --logpath LOGPATH         log path
+        
+example:        
+    ./borgrunner.py borg.yaml info list 
+    ./borgrunner.py borg.yaml info backup info 
+    ./borgrunner.py borg.yaml list -P password -i /home/uid/.ssh/borg-key
 
 where 
 -i -> path to private key
 -P -> passphase to key
+
+
+sample yaml using ssh
+
+=================================================
+---
+repos:
+    url: uid@borg:repo
+    dryrun: false
+
+    archive:
+        # documnents
+        # --------------------------
+      - prefixName:  "documents-"
+        postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
+
+        backup:
+            flags: [  -s, --list, --filter, AME,--one-file-system ]
+            includes: [ '/home/uid/documents/' ]
+            exclude-files: [ "/home/uid/scripts/exclude" ]
+
+        info:
+          flags [ --sort-by name ]
+
+        list:
+          flags: [ --sort-by name ]
+
+        prune:
+            usePrefix: true
+            flags: [ "-stats", "-list", "--save-space" ]
+            keep: { "keep-daily"  : 14,
+                    "keep-weekly" : 8,
+                    "keep-monthly": 6,
+                    "keep-yearly" : 2
+                  }
+
+
+        # development
+        # --------------------------
+      - prefixName:  "dev-"
+        postfixName: "{now:%Y-%m-%dT%H:%M:%S}"
+
+        backup:
+            flags: [  -s, --list, --filter, AME,--one-file-system ]
+            includes: [ '/home/uid/dev/' ]
+            excludes: [ '/home/uid/dev/projA', '/home/uid/dev/projB' ]
+            exclude-files: [ '/home/uid/scripts/dev-exclude', '/home/uid/scripts/exclude' ]
+
+        info:
+          flags [ --sort-by name ]
+
+        list:
+          flags: [ --sort-by name ]
+
+        prune:
+            usePrefix: true
+            flags: [ "-stats", "-list", "--save-space" ]
+            keep: { "keep-daily"  : 7,
+                    "keep-weekly" : 8,
+                    "keep-monthly": 12,
+                    "keep-yearly" : 2
+                  }
+
+...
+
+=================================================
+
+running using keyfile encryption and ssh private key with no passphrase
+./borgrunner.py borg.yaml info backup prune info -P 1234 -i /home/uid/.ssh/key
 
 
