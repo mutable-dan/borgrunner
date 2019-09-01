@@ -1,1 +1,9 @@
-todo
+using keys on remote repo:
+
+./borgrunner.py borg.yaml list -P password -i /home/user/.ssh/borg-key
+
+where 
+-i -> path to private key
+-P -> passphase to key
+
+

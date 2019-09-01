@@ -364,6 +364,7 @@ def main( a_argv=None ):
     if pargs.i is not None:
         borg.privateKey( pargs.i )
 
+    log.info( "===============================================================" )
 
     for strCommand in lstCommand:
         log.info( "------------- {} -------------".format( strCommand ) )
