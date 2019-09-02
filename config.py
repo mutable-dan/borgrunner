@@ -1,10 +1,14 @@
 import yaml
+import base64
 
 '''
     read a ymal file in the form of:
     ---
     repos:
         url: "repo"
+        borgPass: "optional same as -P switch"
+        borgPass64: "optional same as -P switch base64 encoded"
+        sshKey: "optional same as -i switch, path to ssh key file"
         dry-run: false
         
         archive:
@@ -87,9 +91,14 @@ class Config():
                     return False
                 repo = yml[ 'repos' ]
 
-                self.url   = repo[ 'url' ]  if self.exists( repo, 'url'    ) else None
-                self.dryrun= repo['dryrun'] if self.exists( repo, 'dryrun' ) else False
-                #self.flags = repo['flags']  if self.exists( repo, 'flags'  ) else None
+                self.url        = repo[ 'url' ]       if self.exists( repo, 'url' )          else None
+                self.borgPass   = repo[ 'borgPass' ]  if self.exists( repo, 'borgPass' )     else None
+                self.borgPass64 = repo[ 'borgPass64' ]  if self.exists( repo, 'borgPass64' ) else None
+                self.sshKey     = repo[ 'sshKey' ]    if self.exists( repo, 'sshKey' )       else None
+                self.dryrun     = repo['dryrun']      if self.exists( repo, 'dryrun' )       else False
+
+                if self.borgPass64 is not None:
+                    self.borgPass = base64.b64decode( self.borgPass64 ).decode( 'utf-8' )
 
                 if self.exists( repo, 'archive' ):
                     self.archive = repo[ 'archive' ]
@@ -203,6 +212,21 @@ class Config():
     @url.setter
     def url( self, value ):
         self.__url = value
+
+    @property
+    def borgPass( self ):
+        return self.__borgpass
+    @borgPass.setter
+    def borgPass( self, value ):
+        self.__borgpass = value
+
+    @property
+    def sshKey( self ):
+        return self.__sshkey
+    @sshKey.setter
+    def sshKey( self, value ):
+        self.__sshkey = value
+
 
     @property
     def dryrun( self ):

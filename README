@@ -13,8 +13,8 @@ commands:
 
 options:        
   -h, --help                            show help message
-  -P PASSWORD, --password PASSWORD      passphrase for repo keyfile
-  -i                                    path to ssh key for remote repository
+  -P PASSWORD, --password PASSWORD      passphrase for repo keyfile, can override borgPass
+  -i                                    path to ssh key for remote repository, can override sshKey
   -v, --verbose                         verbose mode
   -l LOGPATH, --logpath LOGPATH         log path
         
@@ -34,6 +34,10 @@ sample yaml using ssh
 ---
 repos:
     url: uid@borg:repo
+    borgPass: 'optional pass'
+    borgPass64: 'optional encoded pass' use borgPass xor borgPass64. if both used, encoded will take precidence
+    sshKey: 'optional path'
+
     dryrun: false
 
     archive:

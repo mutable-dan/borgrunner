@@ -27,22 +27,21 @@ class Borgrunner():
         self.log = logging.getLogger( logname )
 
 
-        # self.flags       = config.flags
         self.url         = config.url
+        self.password    = config.borgPass
         self.prefixName  = None
         self.postfixName = None
-        # self.includes    = None
-        # self.excludes    = None
-        # self.excludeFile = None
-        self.password    = None
-        self.rsh         = None
 
+        self.privateKey( config.sshKey )
 
     def passwd( self, a_strPwd: str ):
         self.password = a_strPwd
 
     def privateKey( self, a_strPathToKey ):
-        self.rsh = 'ssh -i ' + a_strPathToKey
+        if a_strPathToKey is not None:
+            self.rsh = 'ssh -i ' + a_strPathToKey
+        else:
+            self.rsh = None
 
     '''
     borg command to amke a backup snapshot
@@ -358,16 +357,21 @@ def main( a_argv=None ):
     log.debug( conf.show() )
 
     borg = Borgrunner( config=conf, logname=g_loggerName )
+
+    # if borg repo passwd is set in the config then use it
+    # or set and/or override from -P switche
     if pargs.password is not None:
         borg.passwd( pargs.password )
 
+    # if ssh key is set in the config then use it
+    # or set and/or override from -i switche
     if pargs.i is not None:
         borg.privateKey( pargs.i )
 
     log.info( "===============================================================" )
 
     for strCommand in lstCommand:
-        log.info( "------------- {} -------------".format( strCommand ) )
+        log.info( "------------- {} using {} -------------".format( strCommand, pargs.yaml_arg ) )
         if strCommand == 'backup':
             borg.run( BackupType.BACKUP )
         elif strCommand == 'prune':
