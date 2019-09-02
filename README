@@ -100,6 +100,7 @@ repos:
 =================================================
 
 running using keyfile encryption and ssh private key with no passphrase
-./borgrunner.py borg.yaml info backup prune info -P 1234 -i /home/uid/.ssh/key
+  ./borgrunner.py borg.yaml info backup prune info -P 1234 -i /home/uid/.ssh/key
 
-
+if sshkey file path is in yaml and passphrase is encoded in yaml:
+  ./borgrunner.py borg.yaml info backup prune info
