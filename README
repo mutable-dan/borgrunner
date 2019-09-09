@@ -1,5 +1,10 @@
 **automate borg backups using a yaml config file
 
+example usage:
+  ./borgrunner.py borg.yaml info 
+  ./borgrunner.py borg.yaml backup
+  ./borgrunner.py borg.yaml info backup prune info
+
 using keys on remote repo:
 
 ./borgrunner.py {yaml file} [commands...] options
