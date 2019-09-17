@@ -7,6 +7,7 @@ import argparse
 import logging
 
 g_loggerName = 'borg'
+g_version    = '0.6'
 
 class BackupType:
     BACKUP    = 1
@@ -250,6 +251,7 @@ class Borgrunner():
 
 
 def usage( a_args ):
+    print( 'version {}'.format( g_version ) )
     print( 'usage: {} yaml.yaml command,...'.format( a_args[0] ) )
     print( '  commands: backup, prune, info, list, check fullcheck, mount, umount, break-lock' )
 
