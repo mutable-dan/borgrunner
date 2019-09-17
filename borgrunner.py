@@ -289,32 +289,35 @@ def main( a_argv=None ):
     pargs = parser.parse_args()
 
     strLogPath = pargs.logpath
-    if strLogPath is None:
-        strLogPath = 'borgrunner.log'
+    bLogToFile = False
+    if strLogPath is not None:
+      bLogToFile = True
 
     log = logging.getLogger( g_loggerName )
     log.setLevel( logging.INFO )
-    logFileHandler = logging.FileHandler( strLogPath )
+
+    logFileHandler = None
+    if bLogToFile == True:
+       logFileHandler    = logging.FileHandler( strLogPath )
+       logFormatter      = logging.Formatter( '%(asctime)s - %(name)s - %(levelname)s - %(message)s' )
+       logFileHandler.setFormatter( logFormatter )
+       log.addHandler( logFileHandler )
+
     logConsoleHandler = logging.StreamHandler()
-    logFormatter = logging.Formatter( '%(asctime)s - %(name)s - %(levelname)s - %(message)s' )
-    consoleFormatter = logging.Formatter( '%(levelname)s - %(message)s' )
-
-    logFileHandler.setFormatter( logFormatter )
+    consoleFormatter  = logging.Formatter( '%(levelname)s - %(message)s' )
     logConsoleHandler.setFormatter( consoleFormatter )
-    log.addHandler( logFileHandler )
     log.addHandler( logConsoleHandler )
-
-
-
 
     if pargs.verbose == True:
         log.info( 'debug logging' )
         log.setLevel( logging.DEBUG )
-        logFileHandler.setLevel( logging.DEBUG )
+        if bLogToFile:
+           logFileHandler.setLevel( logging.DEBUG )
         logConsoleHandler.setLevel( logging.DEBUG )
     else:
         log.setLevel( logging.INFO )
-        logFileHandler.setLevel( logging.INFO )
+        if bLogToFile:
+           logFileHandler.setLevel( logging.INFO )
         logConsoleHandler.setLevel( logging.INFO )
 
     log.info( '{} starting'.format( a_argv[0] ) )
