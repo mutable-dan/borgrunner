@@ -35,6 +35,9 @@ class Borgrunner():
 
         self.privateKey( config.sshKey )
 
+        # for mount cmd
+        self.mountPath = None
+
     def passwd( self, a_strPwd: str ):
         self.password = a_strPwd
 
@@ -43,6 +46,9 @@ class Borgrunner():
             self.rsh = 'ssh -i ' + a_strPathToKey
         else:
             self.rsh = None
+
+    def mount( self, a_strPath ):
+        self.mountPath = a_strPath
 
     '''
     borg command to amke a backup snapshot
@@ -79,9 +85,9 @@ class Borgrunner():
         flags = self.config.getBackupValue( archive, self.config.backup_flags() )
 
         if self.url is None: return False, None
-        postfixName = postfixName if not None else ''
-        dryrun      = dryrun      if not None else False
-        flags       = flags       if not None else []
+        postfixName = postfixName if postfixName is not None else ''
+        dryrun      = dryrun      if dryrun      is not None else False
+        flags       = flags       if flags       is not None else []
 
         if dryrun:
             if '-s' in flags:
@@ -117,10 +123,10 @@ class Borgrunner():
         flags = self.config.getPruneValue( archive, self.config.prune_flags() )
 
         if self.url is None: return False, None
-        bUsePrefix  = bUsePrefix  if not None else False
-        dryrun      = dryrun      if not None else False
-        flags       = flags       if not None else []
-        keep        = keep        if not None else []
+        bUsePrefix  = bUsePrefix  if bUsePrefix is not None else False
+        dryrun      = dryrun      if dryrun     is not None else False
+        flags       = flags       if flags      is not None else []
+        keep        = keep        if keep       is not None else {}
 
         strKeep = ''
         for key in keep:
@@ -160,6 +166,13 @@ class Borgrunner():
         strlist = 'list --sort-by name --format="{{time}} --> {{name}}{{LF}}" {url}'.format( url= self.url )
         return strlist
 
+    def mountCommand( self ):
+        if( self.mountPath == None ):
+            return None
+        else:
+            # mount --rsh 'ssh -i ~/.ssh/borg-vm'  gdan@borg:repo bm
+            strMount = 'mount {url} {mountPoint}'.format( url=self.url, mountPoint=self.mountPath )
+            return strMount
 
 
     '''
@@ -170,13 +183,15 @@ class Borgrunner():
         if bRes == False:
             return
 
-        # cooomands that work on repo
+        # commands that work on repo
         # info
         # list
         if command == BackupType.INFO:
             strParam = self.infoCommand()
         elif command == BackupType.LIST:
             strParam = self.listCommand( )
+        elif command == BackupType.MOUNT:
+            strParam = self.mountCommand()
         else:
             while archive is not None:
                 strCurrentCommand = 'na'
@@ -287,6 +302,7 @@ def main( a_argv=None ):
     parser.add_argument( '-v', '--verbose',            help='verbose mode', action='store_true' )
     parser.add_argument( '--version',                  help='borg version' )
     parser.add_argument( '-l', '--logpath', type=str, help='log path' )
+    parser.add_argument( '-m', '--mountpath', type=str, help='mount path' )
 
     pargs = parser.parse_args()
 
@@ -364,12 +380,12 @@ def main( a_argv=None ):
     borg = Borgrunner( config=conf, logname=g_loggerName )
 
     # if borg repo passwd is set in the config then use it
-    # or set and/or override from -P switche
+    # or set and/or override from -P switch
     if pargs.password is not None:
         borg.passwd( pargs.password )
 
     # if ssh key is set in the config then use it
-    # or set and/or override from -i switche
+    # or set and/or override from -i switch
     if pargs.i is not None:
         borg.privateKey( pargs.i )
 
@@ -385,6 +401,9 @@ def main( a_argv=None ):
             borg.run( BackupType.INFO )
         elif strCommand == 'list':
             borg.run( BackupType.LIST )
+        elif strCommand == 'mount':
+            borg.mount( pargs.mountpath )
+            borg.run( BackupType.MOUNT )
         else:
             log.warning( 'Unknown command: {}'.format( strCommand ) )
             exitFailed()
