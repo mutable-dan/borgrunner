@@ -170,7 +170,7 @@ class Borgrunner():
         if( self.mountPath == None ):
             return None
         else:
-            # mount --rsh 'ssh -i ~/.ssh/borg-vm'  gdan@borg:repo bm
+            # mount --rsh 'ssh -i ~/.ssh/borg-vm'  uid@host:repo mountpoint
             strMount = 'mount {url} {mountPoint}'.format( url=self.url, mountPoint=self.mountPath )
             return strMount
 
