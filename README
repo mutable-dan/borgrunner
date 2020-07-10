@@ -66,7 +66,7 @@ repos:
 
         prune:
             usePrefix: true
-            flags: [ "-stats", "-list", "--save-space" ]
+            flags: [ "--stats", "--list", "--save-space" ]
             keep: { "keep-daily"  : 14,
                     "keep-weekly" : 8,
                     "keep-monthly": 6,
@@ -93,7 +93,7 @@ repos:
 
         prune:
             usePrefix: true
-            flags: [ "-stats", "-list", "--save-space" ]
+            flags: [ "--stats", "--list", "--save-space" ]
             keep: { "keep-daily"  : 7,
                     "keep-weekly" : 8,
                     "keep-monthly": 12,
